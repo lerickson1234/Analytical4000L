@@ -1,0 +1,289 @@
+---
+title: "Learning2Code"
+author: "Steph"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# R Basics
+
+Slide 36:
+
+```{r cars, echo=TRUE}
+
+He_amu <- 4.0026
+
+#This is the atomic mass of Helium in amu
+
+
+print(He_amu)
+
+He_amu
+```
+
+## Data types
+
+Slide 37:
+
+```{r, echo=TRUE}
+He_amu <- 4.0026
+#numeric
+He_amu
+
+# for writing notes
+
+He_amu <- 4L
+#integer
+He_amu
+
+He_amu <-"4.0026"
+#character
+He_amu
+
+He_amu_is_4.0026 <- TRUE
+#logical data 
+He_amu_is_4.0026
+```
+
+#### why is data type important?
+
+Slide 38:
+
+```{r, echo=TRUE}
+
+as.integer(30/4)
+```
+
+### Data structures
+
+Slide 40:
+
+```{r pressure, echo=TRUE}
+elements <- c("H","He","Li","Be","B")
+elements
+
+list <- list("hello" , 1, TRUE, 4L, FALSE)
+list
+
+String <-"Periodic Table"
+String <- paste("Periodic", "Table",sep= " ")
+
+amu <- c(1.008, 4.003, 6.941, 9.012, 10.811) 
+
+dataframe <- data.frame(elements,amu)
+dataframe
+
+
+library(tidyverse)
+
+tibble <- as_tibble(dataframe)
+tibble
+
+
+```
+
+### What is the atomic mass of Beryllium?
+
+Slide 42:
+
+```{r pressure, echo=TRUE}
+
+tibble[4,]
+#outputs the 4th row
+
+tibble$amu[4]
+#outputs the 4th row of column "amu"
+
+tibble[which(tibble$elements == "Be"),]
+#searches for which row in column "elements" meets the condition "Be"
+
+elements[4]
+
+```
+
+### What is the molecular mass of LiH and H2?
+
+Slide 43:
+
+```{r math}
+
+
+
+```
+
+### Conditionals
+
+#### Navigating binary decision trees
+
+Slide 44:
+
+```{r}
+
+```
+
+### Loops
+
+#### How do we differentiate for and while loops?
+
+Slide 46:
+
+```{r}
+for(i in 1:3){
+  print(tibble[i,])
+}
+i=1
+while (i <= 3){
+  print(tibble[i,])
+  i= i + 1
+}
+```
+
+### Functions
+
+#### Create a function to convert temperature units
+
+Slide 48:
+
+```{r}
+Cel2Kel <- function(temp){
+  kelvin = temp + 273.15
+  return(kelvin)
+}
+Cel2Kel(1)
+
+Kel2Cel <- function(temp){
+  Celsius = temp - 273.15
+  return(Celsius)
+}
+Kel2Cel(274.15)
+```
+
+# Packages: Tidyr and Dplyr
+
+Begins on slide 51 on the slide deck
+
+### How-to import data
+
+Slide 53:
+
+```{r}
+amu <- read.csv("Data - week 1 and 2.csv")
+```
+
+### Calculate the mass number from our imported data
+
+Slide 56
+
+```{r}
+library(tidyverse)
+
+amu <- amu %>%
+  mutate(massnumber = atomic.number + neutrons)
+
+```
+
+### Calculate the average atomic mass from our imported data
+
+Slide 57
+
+```{r}
+amu <- amu %>%
+  group_by(symbol) %>%
+  summarise(av.mass = sum(abundance/100*mass))
+```
+
+### Calculate the molar mass of iron (II) chloride
+
+Slide 60-62:
+
+```{r}
+#potential sol 1(brute force)
+FeCl2.mass <- as.numeric(amu[3,2]*2 + amu[4,2])
+#potential sol 2
+FeCl2.mass <- amu %>%
+  filter(symbol == "Fe" | symbol == "Cl") %>%
+  arrange(symbol)
+
+FeCl2 <- as.numeric(FeCl2.mass[2,'av.mass'] + FeCl2.mass[1, 'av.mass']*2)
+
+#SOl 3
+FeCl2.mass <- as.numeric[which(amu$symbol == "Fe"), 'av.mass'] + amu[which(amu$symbol == "Cl"), 'av.mass']*2
+```
+
+## Challenge: can we write a function that can calculate the molar mass of any molecule written as a molecular formula
+
+Potential solution for challenge (slide 63)
+
+```{r}
+MMass_lookup <- setNames(amu$symbol, amu$av.mass)
+
+MMass_Calc <- function(molecule){
+  matches <- gregexpr("[A-Z][a-z]?[0-9]*", molecule)
+  #^looks for a capital letter then maybe a lowercase letter (?) to parse elements in the formula, then a number behind the letter to determine how many of each element there is
+  parts <- regmatches(molecule, matches)[[1]]
+  #^finds individual elements identified in previous function and defines them in new dataset parts
+  total <- 0
+
+  for (part in parts) {
+    element <- sub("[0-9].*","",part)
+    count <- sub("[A-Za-z]+","",part)
+    
+    if (count == "")  count <- 1 
+    
+     else count <- as.numeric(count)
+    
+    total <- total + amu[which(amu$symbol==element),'av.mass'] * count
+  }
+  
+  return(total)
+  }
+  
+MMass_Calc("C2H6")
+  
+  
+
+
+```
+
+# Making graphs in R
+
+Starting from Slide 65
+
+```{r}
+
+```
+
+Slide 70
+
+```{r}
+
+  
+```
+
+## Challenge: can we identify the individual elements on the plot?
+
+Adding more information to the graphs, examples (slide 73):
+
+```{r}
+
+  
+```
+
+## Least squares linear regressions
+
+Slide 75
+
+```{r}
+
+
+```
+
+You can also extract the information without plotting it - Slide 76
+
+```{r}
+
+```

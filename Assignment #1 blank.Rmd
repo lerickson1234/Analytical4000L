@@ -1,0 +1,141 @@
+---
+title: 'Assignment #1: Introduction to R and R Studio'
+author: "(insert name here)"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=TRUE, message = FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(stringr)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+```
+
+#### *Due date: September 25th, 2026 @ 11:59 PM*
+Questions are guided by R for Environmental Chemistry, see textbook here: <https://uoftchem-teaching.github.io/R4EnvChem/>
+
+## Total of 71 points
+
+*1 mark will be removed if information is not printed/presented for grading. Please ensure the code is formatted to fit in the PDF output*
+
+## Question 1 (2 points)
+
+We will knit our assignment into a PDF for final submission, which means we need to install the package 'tinytex'! Install it now. 
+
+Do not modify the cell below. Run the cell below to show if you've successfully installed the packages.
+
+```{r, purl=FALSE}
+library(testthat, quietly = TRUE)
+test_that("Installing Packages", {
+  # Task 1: Check if tinytex is installed
+  expect_true("tinytex" %in% installed.packages()[, "Package"])
+})
+```
+
+## Question 2 (7 points)
+
+For this assignment, we will be working with data held in a csv titled `sample_data.csv`.
+
+Do the following:
+
+1.  Download "sample_data.csv" from this chapter.
+2.  Make sure the CSV file is in the same folder as this Rmd file. 
+3.  Make sure to load tidyverse as a library (hint: include it in the r setup chunk above) 
+4.  Use the appropriate function to read in the CSV file. Assign the loaded data to a variable named `csv_data`. 
+5.  Show the tibble on the PDF by calling the variable `csv_data` at the end of the R chunk. 
+
+
+
+```{r import data, warnings = FALSE, message= FALSE}
+
+
+
+```
+
+## Question 3 (6 points)
+
+Here is how we can format a simple table in R markdown. Fill in the table to specify the data format of all the columns in `csv_data`.
+
+| Column Name | Data format |
+|:------------|:-----------:|
+|        |    |
+|         |       |
+|       |      |
+
+
+## Question 4 (5 points)
+
+Let's summarize some of our data to understand it better. What is the average age and average score from the dataset? Use functions from the tidyverse package to achieve this. Display the answer in a way that is visible on the knitted PDF and remember your sig figs!
+
+```{r summarize data, warnings = FALSE, message= FALSE}
+
+
+```
+
+
+
+## Question 5 (5 points)
+
+Compare the two sections of code, and their output in the knitted PDF. Which line of code is more 'correct' and why?
+
+```{r syntax, warnings = FALSE, message= FALSE}
+
+
+
+
+```
+
+
+## Question 6 (10 points)
+
+1.  Create a scatterplot with `Age` on the x-axis and `Score` on the y-axis. 
+2.  Make sure the plot has a title "Age vs. Score". 
+3.  Scores above 95 should be coloured red. 
+4.  Make sure to evaluate the graph output and adjust it to ensure it is legible in the PDF output.
+5.  Save the plot to a variable named `scatter_plot` and display it on the knitted PDF. 
+
+**Consider**: Visit this ggplot2 webpage to learn more about customizing the plot: <https://ggplot2.tidyverse.org/reference/labs.html>
+
+
+
+```{r, warnings = FALSE, message= FALSE}
+
+
+```
+
+## Question 7 (10 points)
+
+What is the average score and standard deviation of the individuals whose ages are above the median?
+
+```{r, warnings = FALSE, message= FALSE}
+
+
+```
+
+
+## Question 8 (15 points)
+
+Write a function which calculates and presents the average score for individuals in specified age ranges. You can assume the data you will use to calculate the average scores is identical (same column names, data type) to the data included in `csv_data`.                                          
+```{r, warnings = FALSE, message= FALSE}            
+
+
+```
+
+
+## Question 9 (9 points)
+Apply the function to the following age conditions: 
+
+i. over the age of 50
+ii. under the age of 25
+iii. between the ages of 35-45
+
+
+
+
+## Question 10 (2 points)
+What are some limitations to your function? Where might it fail or give an incomplete answer?
+
+
+

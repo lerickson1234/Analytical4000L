@@ -13,7 +13,8 @@ library(ggplot2)
 library(tidyverse)
 ```
 
-#### *Due date: September 25th, 2026 @ 11:59 PM*
+#### *Due date: September 25th, 2026 \@ 11:59 PM*
+
 Questions are guided by R for Environmental Chemistry, see textbook here: <https://uoftchem-teaching.github.io/R4EnvChem/>
 
 ## Total of 71 points
@@ -22,7 +23,7 @@ Questions are guided by R for Environmental Chemistry, see textbook here: <https
 
 ## Question 1 (2 points)
 
-We will knit our assignment into a PDF for final submission, which means we need to install the package 'tinytex'! Install it now. 
+We will knit our assignment into a PDF for final submission, which means we need to install the package 'tinytex'! Install it now.
 
 Do not modify the cell below. Run the cell below to show if you've successfully installed the packages.
 
@@ -41,17 +42,15 @@ For this assignment, we will be working with data held in a csv titled `sample_d
 Do the following:
 
 1.  Download "sample_data.csv" from this chapter.
-2.  Make sure the CSV file is in the same folder as this Rmd file. 
-3.  Make sure to load tidyverse as a library (hint: include it in the r setup chunk above) 
-4.  Use the appropriate function to read in the CSV file. Assign the loaded data to a variable named `csv_data`. 
-5.  Show the tibble on the PDF by calling the variable `csv_data` at the end of the R chunk. 
-
-
+2.  Make sure the CSV file is in the same folder as this Rmd file.
+3.  Make sure to load tidyverse as a library (hint: include it in the r setup chunk above)
+4.  Use the appropriate function to read in the CSV file. Assign the loaded data to a variable named `csv_data`.
+5.  Show the tibble on the PDF by calling the variable `csv_data` at the end of the R chunk.
 
 ```{r import data, warnings = FALSE, message= FALSE}
+csv_data <- read.csv("sample_data (1).csv")
 
-
-
+csv_data
 ```
 
 ## Question 3 (6 points)
@@ -60,21 +59,24 @@ Here is how we can format a simple table in R markdown. Fill in the table to spe
 
 | Column Name | Data format |
 |:------------|:-----------:|
-|        |    |
-|         |       |
-|       |      |
-
+| ID          |   Integer   |
+| Name        |  Character  |
+| Age         |   Integer   |
+| Score       |   numeric   |
 
 ## Question 4 (5 points)
 
 Let's summarize some of our data to understand it better. What is the average age and average score from the dataset? Use functions from the tidyverse package to achieve this. Display the answer in a way that is visible on the knitted PDF and remember your sig figs!
 
 ```{r summarize data, warnings = FALSE, message= FALSE}
+Average_Age <- csv_data %>%
+  summarise(Age = sum(Age/100))
+Average_Age
 
-
+Average_Score <- csv_data %>%
+  summarise(Score = sum(Score/100))
+Average_Score
 ```
-
-
 
 ## Question 5 (5 points)
 
@@ -82,27 +84,44 @@ Compare the two sections of code, and their output in the knitted PDF. Which lin
 
 ```{r syntax, warnings = FALSE, message= FALSE}
 
+#Code for Question 5 for Assignment 1
 
+#Do not alter the code in this chunk!
+
+#section 1:
+example_data <- csv_data %>% mutate(example_column = paste(Name, Age, Score, " Collated data"))
+example_data
+
+#section 2:
+example_data <- csv_data %>%
+  mutate(example_column = paste(Name, Age, Score, " Collated data"))
+csv_data
 
 
 ```
 
-
 ## Question 6 (10 points)
 
-1.  Create a scatterplot with `Age` on the x-axis and `Score` on the y-axis. 
-2.  Make sure the plot has a title "Age vs. Score". 
-3.  Scores above 95 should be coloured red. 
+1.  Create a scatterplot with `Age` on the x-axis and `Score` on the y-axis.
+2.  Make sure the plot has a title "Age vs. Score".
+3.  Scores above 95 should be coloured red.
 4.  Make sure to evaluate the graph output and adjust it to ensure it is legible in the PDF output.
-5.  Save the plot to a variable named `scatter_plot` and display it on the knitted PDF. 
+5.  Save the plot to a variable named `scatter_plot` and display it on the knitted PDF.
 
 **Consider**: Visit this ggplot2 webpage to learn more about customizing the plot: <https://ggplot2.tidyverse.org/reference/labs.html>
 
-
-
 ```{r, warnings = FALSE, message= FALSE}
+colors <- ifelse(csv_data$Score > 95, "Red", "Black")
 
-
+plot(
+  csv_data$Age,
+  csv_data$Score,
+  main = "Age Vs. Score",
+  xlab = "Age",
+  ylab = "Score",
+  col = colors,
+  pch = 19
+)
 ```
 
 ## Question 7 (10 points)
@@ -114,28 +133,23 @@ What is the average score and standard deviation of the individuals whose ages a
 
 ```
 
-
 ## Question 8 (15 points)
 
-Write a function which calculates and presents the average score for individuals in specified age ranges. You can assume the data you will use to calculate the average scores is identical (same column names, data type) to the data included in `csv_data`.                                          
-```{r, warnings = FALSE, message= FALSE}            
+Write a function which calculates and presents the average score for individuals in specified age ranges. You can assume the data you will use to calculate the average scores is identical (same column names, data type) to the data included in `csv_data`.
+
+```{r, warnings = FALSE, message= FALSE}
 
 
 ```
 
-
 ## Question 9 (9 points)
-Apply the function to the following age conditions: 
 
-i. over the age of 50
+Apply the function to the following age conditions:
+
+i.  over the age of 50
 ii. under the age of 25
 iii. between the ages of 35-45
 
-
-
-
 ## Question 10 (2 points)
+
 What are some limitations to your function? Where might it fail or give an incomplete answer?
-
-
-

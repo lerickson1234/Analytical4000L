@@ -1,6 +1,6 @@
 ---
 title: 'Assignment #1: Introduction to R and R Studio'
-author: "(insert name here)"
+author: "Layne Erickson"
 date: "`r Sys.Date()`"
 output: pdf_document
 ---
@@ -62,7 +62,7 @@ Here is how we can format a simple table in R markdown. Fill in the table to spe
 | ID          |   Integer   |
 | Name        |  Character  |
 | Age         |   Integer   |
-| Score       |   numeric   |
+| Score       |   Numeric   |
 
 ## Question 4 (5 points)
 
@@ -70,12 +70,12 @@ Let's summarize some of our data to understand it better. What is the average ag
 
 ```{r summarize data, warnings = FALSE, message= FALSE}
 Average_Age <- csv_data %>%
-  summarise(Age = sum(Age/100))
-Average_Age
+  summarise(Age = sum(Age/100),options(digits=2))
+Average_Age[[1]]
 
 Average_Score <- csv_data %>%
-  summarise(Score = sum(Score/100))
-Average_Score
+  summarise(Score = sum(Score/100),options(digits=4))
+Average_Score[[1]]
 ```
 
 ## Question 5 (5 points)
@@ -97,7 +97,7 @@ example_data <- csv_data %>%
   mutate(example_column = paste(Name, Age, Score, " Collated data"))
 csv_data
 
-
+#The second input is calling the default csv data and not the mutated csv data and is therefore less correct
 ```
 
 ## Question 6 (10 points)
@@ -111,17 +111,16 @@ csv_data
 **Consider**: Visit this ggplot2 webpage to learn more about customizing the plot: <https://ggplot2.tidyverse.org/reference/labs.html>
 
 ```{r, warnings = FALSE, message= FALSE}
-colors <- ifelse(csv_data$Score > 95, "Red", "Black")
 
-plot(
-  csv_data$Age,
-  csv_data$Score,
-  main = "Age Vs. Score",
+
+scatter_plot <- ggplot(csv_data, aes(x=Age,y=Score)) +
+    geom_point(aes(color=Score>95), size=3)+
+  scale_color_manual(values=c("FALSe"="black","TRUE"="RED"))+labs(
+ title = "Age Vs. Score",
   xlab = "Age",
-  ylab = "Score",
-  col = colors,
-  pch = 19
-)
+  ylab = "Score")
+scatter_plot
+
 ```
 
 ## Question 7 (10 points)

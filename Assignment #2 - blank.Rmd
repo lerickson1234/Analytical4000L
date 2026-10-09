@@ -18,18 +18,13 @@ library(broom)
 
 #### *Due date: October 9th, 2026 \@ 11:59 PM*
 
-
 ## Total of 141 points
-
 
 *Small syntax errors for coding that result in wrong answer are deducted, but otherwise would have obtained the right answer are docked 1 mark. 1 mark will be removed if information is not printed/presented for grading. Please ensure the code is formatted to fit in the PDF output*
 
-
 You are interested in quantifying the amount of **formic acid** in indoor air. To do this, you employ the use of a passive sampler made with KOH (a strong base), that transform the formic acid into its conjugate base, **formate** (HCOO$^-$). You quantify the amount of formate in your passive sampler via ion chromatography coupled with a conductivity detector, after extraction of the passive sampler into water.
 
-
 ## Section 1: Experimental set-up (16 points)
-
 
 **Nine** passive tube-type samplers are made using KOH dispersed on 5 mm metal discs secured at the end of a 5 cm quartz tube, which are enough for experiments, method blanks, and zeros in *triplicate*.**Three** samplers were made without KOH to serve as an experimental control.
 
@@ -39,56 +34,47 @@ A graphic of the tube is included below:
 
 Samplers were deployed for 4 hours before extraction into 5 mL of milliQ water. Each sample was measured via IC-CD and the peak areas of all the extracts is included in "Assignment2.csv"
 
-
 ### Question 1: Describe how each sampler type is deployed and the purpose of each sampler type. (16 points)
-
 
 Fill in your answers within in the formatting below after deleting the highlight. </mark>
 
-
 **3 experimental samplers**
 
-*Deployment description:*   
+Deployment description: The 3 experimental samplers were made with KOH on 5mm metal discs secured at the end of 5 cm quartz tubes and deployed for 4 hours 
 
-*Purpose:*   
+Purpose: KOH is deployed on the experimental samplers to react with the formic acid in the air forming the conjugate base CHOO for quantification. 
 
 **3 method blanks**
 
-*Deployment description:*   
+*Deployment description:*
 
-*Purpose:*   
+*Purpose:*
 
 **3 zeros**
 
-*Deployment description:*   
+*Deployment description:
 
-*Purpose:*   
+*Purpose:
 
 **3 controls**
 
-*Deployment description:*   
+Deployment description: Samplers made without KOH and deployed alongside the experimental samplers
 
-*Purpose:*  
-
+Purpose: To have an image of the "noise" of the sampler after 4 hours, without the desired reaction occuring 
 
 ## Section 2: Calibration curve (80 points)
 
-
 Before you measure your unknown sample, you need to calibrate your IC-CD system. To do this, you run 8 solutions containing different concentrations of formate, in triplicate, into the instrument to get a calibration curve. The data from these experiments can be found in the file 'Assignment2_data.csv'.
-
 
 ### Question 2: Import data into R and transform it into a useable format to plot. (5 points)
 
-
 ```{r import, warning = FALSE, message = FALSE}
-
+Exp_Data <- read.csv("Assignment2_data.csv")
 
 
 ```
 
-
 ### Question 3: Evaluate the quality of the graph and identify the data points that will be used for the final calibration. Rationalize your choices. (15 points)
-
 
 ```{r quality control, warning = FALSE, message = FALSE}
 
@@ -96,23 +82,18 @@ Before you measure your unknown sample, you need to calibrate your IC-CD system.
 
 ```
 
-
-Rationale:   
-
+Rationale:
 
 ### Question 4: Generate the final graph of the calibration curve, including the linear equation and R$^2$ on the graph. (15 points)
 
 *remember what we learned about the elements of a good graph*
-
 
 ```{r calibration, warning = FALSE, message = FALSE}
 
 
 ```
 
-
 ### Question 5: Calculate the limit of quantification (LOQ) and detection (LOD) via two methods for the above data. Which version do you think is most accurate? (20 points)
-
 
 ```{r LOD LOQ, warning = FALSE, message = FALSE}
 
@@ -120,27 +101,21 @@ Rationale:
 
 ```
 
-| Method  | Limit of Detection | Limit of Quantification |
-|:-------:|:------------------:|:-----------------------:|
-| 1       |           |                |
-| 2       |           |                |
-
-
+| Method | Limit of Detection | Limit of Quantification |
+|:------:|:------------------:|:-----------------------:|
+|   1    |                    |                         |
+|   2    |                    |                         |
 
 ### Question 6: Unknown concentrations (25 points)
 
-
 #### 6a. Write a function that can calculate the uncertainty in the concentration of an unknown from **any** calibration curve data. What are the limitations of the function? Reflect on what format the data needs to be in. (15 points)
-
 
 ```{r function, warning = FALSE, message = FALSE}
 
 
 ```
 
-
 #### 6b. Report the concentration of formate for each experiment type with its uncertainty. (10 points)
-
 
 ```{r unknown, warning = FALSE, message = FALSE}
 
@@ -148,15 +123,11 @@ Rationale:
 
 ```
 
-
 ## Section 3: Determining the formic acid concentration in the room (45 points)
-
 
 ### Question 7: Calculating the concentration of formic acid in indoor air. (25 points)
 
-
 #### 7a) During method development, it was established that the extraction efficiency of formate is 98%. Based on these experiments, what is the total amount of formate collected on the samplers, with the standard deviation (in µg/L). (5 points)
-
 
 ```{r, warning = FALSE, message = FALSE}
 
@@ -164,13 +135,11 @@ Rationale:
 
 ```
 
-
 #### 7b) Based on the mass of formate collected on the passive samplers, calculate the concentration of formic acid (in µg/cm$^3$) in indoor air, with its uncertainty. (20 points)
 
 The concentration of the analyte in air is described by the following equation: $$ C = \frac{M \times L}{D \times A \times t} $$
 
 Where M is the mass of formate collected from ambient air, L is the length of the sampling tube, D is the diffusion coefficient of formic acid (0.153 cm$^2$/s), A is the area of sample collection, and t is collection time.
-
 
 *4 points per calculated value with appropriate units, 4 points for correct final values*
 
@@ -180,9 +149,7 @@ Where M is the mass of formate collected from ambient air, L is the length of th
 
 ```
 
-
 ### Question 8: Report the final concentration of formic acid in air in mg/m\$\^3\$, with uncertainty. (15 points)
-
 
 *5 points for correcting for control experiment, 5 points for unit conversion, 5 points for correctly reporting uncertainty with significant figures.*
 
@@ -192,14 +159,8 @@ Where M is the mass of formate collected from ambient air, L is the length of th
 
 ```
 
-
 ### Question 9: Occupational exposure limits for formic acid generally restrict airborne concentrations to 9 mg/m$^3$ averaged over an 8-hour workday. (5 points)
 
 ### 9a. How does sampling time play a role in this determination? (3 points)
 
-
-
-
 ### 9b. Based on these results, do you think it would be safe to spend an 8-hour workday in that space? (2 points)
-
-

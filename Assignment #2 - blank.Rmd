@@ -1,6 +1,6 @@
 ---
 title: 'Assignment #2: Determination of formic acid in indoor air. '
-author: "(insert name here)"
+author: "Layne Erickson"
 date: "`r Sys.Date()`"
 output:
   pdf_document: default
@@ -40,27 +40,27 @@ Fill in your answers within in the formatting below after deleting the highlight
 
 **3 experimental samplers**
 
-Deployment description: The 3 experimental samplers were made with KOH on 5mm metal discs secured at the end of 5 cm quartz tubes and deployed for 4 hours 
+Deployment description: The 3 experimental samplers were made with KOH on 5mm metal discs secured at the end of 5 cm quartz tubes and deployed for 4 hours
 
-Purpose: KOH is deployed on the experimental samplers to react with the formic acid in the air forming the conjugate base CHOO for quantification. 
+Purpose: KOH is deployed on the experimental samplers to react with the formic acid in the air forming the conjugate base CHOO for quantification.
 
 **3 method blanks**
 
-*Deployment description:*
+Deployment description: Method Blanks samplers are deployed for the same 4 hours but in a controlled atmosphere
 
-*Purpose:*
+Purpose: to determine the signal from 4 hours without airborne formic acid interaction
 
 **3 zeros**
 
-*Deployment description:
+Deployment description: Not deployed, measured at the "0" point of time
 
-*Purpose:
+Purpose: to determine the initial signal of the samplers without any reaction time
 
 **3 controls**
 
 Deployment description: Samplers made without KOH and deployed alongside the experimental samplers
 
-Purpose: To have an image of the "noise" of the sampler after 4 hours, without the desired reaction occuring 
+Purpose: To determine the signal of the formate of the sampler after 4 hours, without the base present, which should measure formate in the air
 
 ## Section 2: Calibration curve (80 points)
 
@@ -70,6 +70,9 @@ Before you measure your unknown sample, you need to calibrate your IC-CD system.
 
 ```{r import, warning = FALSE, message = FALSE}
 Exp_Data <- read.csv("Assignment2_data.csv")
+names(Exp_Data)[names(Exp_Data)=="Standard.concentration"] <- "Std.Conc_ug/L"
+names(Exp_Data)[names(Exp_Data)=="Formate.peak.area..us.min."] <- "Formate.peak.area"
+Exp_Data$`Std.Conc_ug/L` <- as.numeric(gsub("ug/L", "",Exp_Data$`Std.Conc_ug/L`))
 
 
 ```
@@ -77,9 +80,31 @@ Exp_Data <- read.csv("Assignment2_data.csv")
 ### Question 3: Evaluate the quality of the graph and identify the data points that will be used for the final calibration. Rationalize your choices. (15 points)
 
 ```{r quality control, warning = FALSE, message = FALSE}
+#Plotting the Graph as is
+ggplot(Exp_Data, aes(`Std.Conc_ug/L`,Formate.peak.area))+
+  geom_point()+
+  geom_smooth(method="lm")+
+  theme_bw(base_size = 12)+
+  ggtitle("Test.Formate")
+```
 
+```{r quality control, warning = FALSE, message = FALSE}
+#Immediately there is a quite significant outlier at 1200 so a grubs test must be performed
+Grubbs_Formate <- Exp_Data %>%
+  filter(`Std.Conc_ug/L` == 1200) %>%
+  summarize(mean_Formate = mean(Formate.peak.area), 
+            sd_Formate = sd(Formate.peak.area))
 
+G_Formate <- abs(1.852- Grubbs_Formate$mean_Formate)/Grubbs_Formate$sd_Formate
 
+# The Grubbs test critical value for n=4 is 1.46, and the G value of that point is 1.499 so it is borderline, but can be removed
+Exp_Data[which(Exp_Data$Formate.peak.area == 1.8520), 'Formate.peak.area'] <- NA
+
+ggplot(Exp_Data, aes(`Std.Conc_ug/L`,Formate.peak.area))+
+  geom_point()+
+  geom_smooth(method="lm")+
+  theme_bw(base_size = 12)+
+  ggtitle("Test.Formate.G")
 ```
 
 Rationale:
@@ -89,7 +114,14 @@ Rationale:
 *remember what we learned about the elements of a good graph*
 
 ```{r calibration, warning = FALSE, message = FALSE}
-
+ggplot(Exp_Data, aes(`Std.Conc_ug/L`,Formate.peak.area))+
+  geom_point()+
+  geom_smooth(method="lm", se= FALSE)+
+  stat_poly_eq(formula = y~x,aes(label=paste(..eq.label..,..rr.label.., sep="~~~")),parse=TRUE)+
+  theme_bw(base_size = 12)+
+  xlim(0,1300)+
+  ylim(0,1.05)+
+  ggtitle("Formate.Calibration.Final")
 
 ```
 

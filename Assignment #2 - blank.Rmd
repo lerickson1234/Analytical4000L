@@ -170,6 +170,7 @@ I think the second method is likely to be more accurate as 57.1ug/L as the limit
 #ybar = mean response of calibration standards
 plot(Exp_Data$Std.Conc_ug_L,
      Exp_Data$Formate.peak.area)
+Cali.Curve <-lm(Formate.peak.area~Std.Conc_ug_L, data=Exp_Data)
 coef(Cali.Curve)
 summary(Cali.Curve)$r.squared
 new <- data.frame(Std.Conc_ug_L = 13.09)
@@ -194,7 +195,12 @@ conc_uncertainty <- function(model, y0, m = 1) {
 
   return(sx)
 }
-Cali.Curve <-lm(Formate.peak.area~Std.Conc_ug_L, data=Exp_Data)
+control_mean <- mean(Exp_Data$unknown_peakarea[Exp_Data$passive_exp_type =="control "])
+blank_mean <- mean(Exp_Data$unknown_peakarea[Exp_Data$passive_exp_type =="blank"])
+zero_mean <-mean(Exp_Data$unknown_peakarea[Exp_Data$passive_exp_type =="zero"])
+experiment_mean <- mean(Exp_Data$unknown_peakarea[Exp_Data$passive_exp_type =="experiment"])
+
+
 control_uncert <- conc_uncertainty(Cali.Curve,control_mean)
 blank_uncert <- conc_uncertainty(Cali.Curve,blank_mean)
 zero_uncert <- conc_uncertainty(Cali.Curve,zero_mean)
@@ -235,15 +241,15 @@ cat("The concentration of the experiment is",experiment_conc,"±",experiment_unc
 
 ```{r, warning = FALSE, message = FALSE}
 #extracted with 5mL of water, so total mass of Formate is conc * 0.005L *0.98
-control_mass <- control_conc*0.005*0.98
-blank_mass <-blank_conc*0.005*0.98
-zero_mass <- zero_conc*0.005*0.98
-experiment_mass <-experiment_conc*0.005*0.98
+control_mass <- control_conc*0.005/0.98
+blank_mass <-blank_conc*0.005/0.98
+zero_mass <- zero_conc*0.005/0.98
+experiment_mass <-experiment_conc*0.005/0.98
 
-cat("The mass of formate in the control is",control_conc*0.005*0.98,"ug","±",control_uncert,"ug/L")
-cat("The mass of formate in the blank is",blank_conc*0.005*0.98,"ug","±",blank_uncert,"ug/L")
-cat("The mass of formate in the zero is",zero_conc*0.005*0.98,"ug","±",zero_uncert,"ug/L")
-cat("The mass of formate in the experiment is",experiment_conc*0.005*0.98,"ug","±",experiment_uncert,"ug/L")
+cat("The mass of formate in the control is",control_conc,"±",control_uncert,"ug/L")
+cat("The mass of formate in the blank is",blank_conc,"±",blank_uncert,"ug/L")
+cat("The mass of formate in the zero is",zero_conc,"±",zero_uncert,"ug/L")
+cat("The mass of formate in the experiment is",experiment_conc,"±",experiment_uncert,"ug/L")
 
 ```
 
@@ -258,18 +264,18 @@ Where M is the mass of formate collected from ambient air, L is the length of th
 ```{r, warning = FALSE, message = FALSE}
 #L=5cm
 #D=0.153 cm^2/s
-#A=5mmD = pir^2 = pi2.5^2= 19.635mm =1.963cm^2
+#A=5mmD = pir^2 = pi2.5^2= 19.635mm^2 =0.1963cm^2
 #t=4hours =14400s
 
-AirConc_control <-((control_mass*5)/(0.153*1.963*14400))
-AirConc_blank <-((blank_mass*5)/(0.153*1.963*14400))
-AirConc_zero <-((zero_mass*5)/(0.153*1.963*14400))
-AirConc_experiment <-((experiment_mass*5)/(0.153*1.963*14400))
+AirConc_control <-((control_mass*5)/(0.153*0.1963*14400))
+AirConc_blank <-((blank_mass*5)/(0.153*0.1963*14400))
+AirConc_zero <-((zero_mass*5)/(0.153*0.1963*14400))
+AirConc_experiment <-((experiment_mass*5)/(0.153*0.1963*14400))
 
-cat("Concentration of formic acid in the air from the control sampler is", signif(AirConc_control, digits=3), "ug/cm^3")
-cat("Concentration of formic acid in the air from the blank sampler is", signif(AirConc_blank, digits=3), "ug/cm^3")
-cat("Concentration of formic acid in the air from the zero sampler is", signif(AirConc_zero, digits=3), "ug/cm^3")
-cat("Concentration of formic acid in the air from the experiment sampler is", signif(AirConc_experiment, digits=3), "ug/cm^3")
+cat("The concentration of formic acid in the air from the control sampler is", signif(AirConc_control, digits=3), "ug/cm^3.")
+cat("The concentration of formic acid in the air from the blank sampler is", signif(AirConc_blank, digits=3), "ug/cm^3.")
+cat("The concentration of formic acid in the air from the zero sampler is", signif(AirConc_zero, digits=3), "ug/cm^3.")
+cat("The concentration of formic acid in the air from the experiment sampler is", signif(AirConc_experiment, digits=3), "ug/cm^3")
 ```
 
 ### Question 8: Report the final concentration of formic acid in air in mg/m\$\^3\$, with uncertainty. (15 points)
@@ -281,13 +287,13 @@ cat("Concentration of formic acid in the air from the experiment sampler is", si
 #cm^3 -> m^3 *0.000001
 #converting Experiment and control to mg/m^3:
 
-Experiment <- 0.00446*0.001/0.000001
-Control<-7.97e-05*0.001/0.000001
+Experiment <- 0.0464*0.001/0.000001
+Control<-0.00083*0.001/0.000001
 
 
 #converting uncertainty to mg/m^3 from ug/L
-experiment_AirConc_uncert<-((experiment_uncert*0.005*5)/(0.153*1.963*14400))
-control_AirConc_uncert<-((control_uncert*0.005*5)/(0.153*1.963*14400))
+experiment_AirConc_uncert<-((experiment_uncert*0.005*5)/(0.153*0.1963*14400))
+control_AirConc_uncert<-((control_uncert*0.005*5)/(0.153*0.1963*14400))
 Fin_experiment_Uncert <-(experiment_AirConc_uncert*0.001/0.000001)
 Fin_control_uncert <-(control_AirConc_uncert*0.001/0.000001)
 
@@ -301,7 +307,7 @@ cat("The final concentration of formic acid in the air is", signif(Experiment - 
 ### Question 9: Occupational exposure limits for formic acid generally restrict airborne concentrations to 9 mg/m$^3$ averaged over an 8-hour workday. (5 points)
 
 ### 9a. How does sampling time play a role in this determination? (3 points)
-#We sampled for only 4 hours, so we could expect the exposure over an 8 hour day to be twice as much as the sampled concentration.
+We sampled for only 4 hours, so we could expect the exposure over an 8 hour day to be twice as much as the sampled concentration.
 
 ### 9b. Based on these results, do you think it would be safe to spend an 8-hour workday in that space? (2 points)
 With the highest uncertainty, assuming twice as long has twice the exposure, the exposure would be over the limits and even without assuming the highest uncertainty it would be borderline at best and there it would be unsafe conditions.

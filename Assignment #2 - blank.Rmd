@@ -70,9 +70,9 @@ Before you measure your unknown sample, you need to calibrate your IC-CD system.
 
 ```{r import, warning = FALSE, message = FALSE}
 Exp_Data <- read.csv("Assignment2_data.csv")
-names(Exp_Data)[names(Exp_Data)=="Standard.concentration"] <- "Std.Conc_ug/L"
+names(Exp_Data)[names(Exp_Data)=="Standard.concentration"] <- "Std.Conc_ug_L"
 names(Exp_Data)[names(Exp_Data)=="Formate.peak.area..us.min."] <- "Formate.peak.area"
-Exp_Data$`Std.Conc_ug/L` <- as.numeric(gsub("ug/L", "",Exp_Data$`Std.Conc_ug/L`))
+Exp_Data$`Std.Conc_ug_L` <- as.numeric(gsub("ug/L", "",Exp_Data$`Std.Conc_ug_L`))
 
 
 ```
@@ -81,7 +81,7 @@ Exp_Data$`Std.Conc_ug/L` <- as.numeric(gsub("ug/L", "",Exp_Data$`Std.Conc_ug/L`)
 
 ```{r quality control, warning = FALSE, message = FALSE}
 #Plotting the Graph as is
-ggplot(Exp_Data, aes(`Std.Conc_ug/L`,Formate.peak.area))+
+ggplot(Exp_Data, aes(`Std.Conc_ug_L`,Formate.peak.area))+
   geom_point()+
   geom_smooth(method="lm")+
   theme_bw(base_size = 12)+
@@ -91,16 +91,16 @@ ggplot(Exp_Data, aes(`Std.Conc_ug/L`,Formate.peak.area))+
 ```{r quality control, warning = FALSE, message = FALSE}
 #Immediately there is a quite significant outlier at 1200 so a grubs test must be performed
 Grubbs_Formate <- Exp_Data %>%
-  filter(`Std.Conc_ug/L` == 1200) %>%
+  filter(`Std.Conc_ug_L` == 1200) %>%
   summarize(mean_Formate = mean(Formate.peak.area), 
             sd_Formate = sd(Formate.peak.area))
 
 G_Formate <- abs(1.852- Grubbs_Formate$mean_Formate)/Grubbs_Formate$sd_Formate
 
-# The Grubbs test critical value for n=4 is 1.46, and the G value of that point is 1.499 so it is borderline, but can be removed
+# The Grubbs test critical value for n=4 is 1.46, and the G value of that point is 1.499 so it is borderline, but can be removed5
 Exp_Data[which(Exp_Data$Formate.peak.area == 1.8520), 'Formate.peak.area'] <- NA
 
-ggplot(Exp_Data, aes(`Std.Conc_ug/L`,Formate.peak.area))+
+ggplot(Exp_Data, aes(`Std.Conc_ug_L`,Formate.peak.area))+
   geom_point()+
   geom_smooth(method="lm")+
   theme_bw(base_size = 12)+
@@ -114,7 +114,7 @@ Rationale:
 *remember what we learned about the elements of a good graph*
 
 ```{r calibration, warning = FALSE, message = FALSE}
-ggplot(Exp_Data, aes(`Std.Conc_ug/L`,Formate.peak.area))+
+ggplot(Exp_Data, aes(`Std.Conc_ug_L`,Formate.peak.area))+
   geom_point()+
   geom_smooth(method="lm", se= FALSE)+
   stat_poly_eq(formula = y~x,aes(label=paste(..eq.label..,..rr.label.., sep="~~~")),parse=TRUE)+
@@ -128,30 +128,102 @@ ggplot(Exp_Data, aes(`Std.Conc_ug/L`,Formate.peak.area))+
 ### Question 5: Calculate the limit of quantification (LOQ) and detection (LOD) via two methods for the above data. Which version do you think is most accurate? (20 points)
 
 ```{r LOD LOQ, warning = FALSE, message = FALSE}
+#Method 1:
+fit_Formate <- lm(Formate.peak.area ~`Std.Conc_ug_L` , Exp_Data)
+mod_sum_Formate <- summary(fit_Formate)
+  limits <- tibble(
+  type = c("LOD (method 1)", "LOD (method 2)", "LOQ (method 1)", "LOQ (method 2)"),
+  Formate = as.double(1:4))
+limits[1, "Formate"] <- round(3.3*mod_sum_Formate$sigma/as.numeric(mod_sum_Formate$coefficients["Std.Conc_ug_L", "Estimate"]), 3)
 
+limits[3, "Formate"] <- 10*mod_sum_Formate$sigma/as.numeric(mod_sum_Formate$coefficients["Std.Conc_ug_L", "Estimate"])
+colnames(limits)
 
+#Method 2: 
+sd <- Exp_Data %>%
+  filter(Std.Conc_ug_L == 10) %>%
+  select(Formate.peak.area) %>% 
+  summarize(sd = sd(Formate.peak.area, na.rm = TRUE))
+
+limits[2, "Formate"] <- 3.3*as.numeric(sd)/as.numeric(mod_sum_Formate$coefficients["Std.Conc_ug_L", "Estimate"])
+limits[4, "Formate"] <- 10*as.numeric(sd)/as.numeric(mod_sum_Formate$coefficients["Std.Conc_ug_L", "Estimate"])
 
 ```
 
 | Method | Limit of Detection | Limit of Quantification |
 |:------:|:------------------:|:-----------------------:|
-|   1    |                    |                         |
-|   2    |                    |                         |
+|   1    |        57.1        |          173.1          |
+|   2    |        2.14        |           6.5           |
+
+I think the second method is likely to be more accurate as 57.1ug/L as the limit of detection is higher than the the lowest values of 10ug/L and 50ug/L which have significantly different signals suggesting that the machine can definitely both detect and quantify signals at those values
 
 ### Question 6: Unknown concentrations (25 points)
 
 #### 6a. Write a function that can calculate the uncertainty in the concentration of an unknown from **any** calibration curve data. What are the limitations of the function? Reflect on what format the data needs to be in. (15 points)
 
 ```{r function, warning = FALSE, message = FALSE}
+#sy = residual standard deviation (summary(model)$sigma)
+#b1 =Slope
+#m = number of replicate measurements of the unknown
+#n= number of calibration standards
+#y0 = measured response of the unknown
+#ybar = mean response of calibration standards
+plot(Exp_Data$Std.Conc_ug_L,
+     Exp_Data$Formate.peak.area)
+coef(Cali.Curve)
+summary(Cali.Curve)$r.squared
+new <- data.frame(Std.Conc_ug_L = 13.09)
 
+range(Exp_Data$Std.Conc_ug_L)
+conc_uncertainty <- function(model, y0, m = 1) {
+  calib_x <- model$model[[2]]
+  calib_y <- model$model[[1]]
 
+  sy <- summary(model)$sigma
+  b1 <- coef(model)[2]
+
+  n <- length(calib_x)
+  ybar <- mean(calib_y)
+
+  sx <- (sy / b1) * sqrt(
+    1/m +
+    1/n +
+    ((y0 - ybar)^2) /
+      (b1^2 * sum((calib_x - mean(calib_x))^2))
+  )
+
+  return(sx)
+}
+Cali.Curve <-lm(Formate.peak.area~Std.Conc_ug_L, data=Exp_Data)
+control_uncert <- conc_uncertainty(Cali.Curve,control_mean)
+blank_uncert <- conc_uncertainty(Cali.Curve,blank_mean)
+zero_uncert <- conc_uncertainty(Cali.Curve,zero_mean)
+experiment_uncert<- conc_uncertainty(Cali.Curve,experiment_mean)
+
+#The issue with the function is that in this particular instance, the standard deviation of whole calibration curve is quite large, so using this equation the uncertainty ends up being about as large as the expected concentrations of the control, blank and zero unknowns
 ```
 
 #### 6b. Report the concentration of formate for each experiment type with its uncertainty. (10 points)
 
 ```{r unknown, warning = FALSE, message = FALSE}
+control_mean <- mean(Exp_Data$unknown_peakarea[Exp_Data$passive_exp_type =="control "])
+blank_mean <- mean(Exp_Data$unknown_peakarea[Exp_Data$passive_exp_type =="blank"])
+zero_mean <-mean(Exp_Data$unknown_peakarea[Exp_Data$passive_exp_type =="zero"])
+experiment_mean <- mean(Exp_Data$unknown_peakarea[Exp_Data$passive_exp_type =="experiment"])
 
-
+#Concentration formula:
+control_conc<- (control_mean - coef(Cali.Curve)[1]) /
+  coef(Cali.Curve)[2]
+blank_conc<- (blank_mean - coef(Cali.Curve)[1]) /
+  coef(Cali.Curve)[2]
+zero_conc<- (zero_mean - coef(Cali.Curve)[1]) /
+  coef(Cali.Curve)[2]
+experiment_conc<- (experiment_mean - coef(Cali.Curve)[1]) /
+  coef(Cali.Curve)[2]
+cat("The concentration of the control is",control_conc,"±",control_uncert,"ug/L")
+cat("The concentration of the blank is", blank_conc,"±",blank_uncert,"ug/L")
+cat("The concentration of the zero is", zero_conc,"±",zero_uncert,"ug/L")
+cat("The concentration of the experiment is",experiment_conc,"±",experiment_uncert,"ug/L")
 
 ```
 
@@ -162,8 +234,16 @@ ggplot(Exp_Data, aes(`Std.Conc_ug/L`,Formate.peak.area))+
 #### 7a) During method development, it was established that the extraction efficiency of formate is 98%. Based on these experiments, what is the total amount of formate collected on the samplers, with the standard deviation (in µg/L). (5 points)
 
 ```{r, warning = FALSE, message = FALSE}
+#extracted with 5mL of water, so total mass of Formate is conc * 0.005L *0.98
+control_mass <- control_conc*0.005*0.98
+blank_mass <-blank_conc*0.005*0.98
+zero_mass <- zero_conc*0.005*0.98
+experiment_mass <-experiment_conc*0.005*0.98
 
-
+cat("The mass of formate in the control is",control_conc*0.005*0.98,"ug","±",control_uncert,"ug/L")
+cat("The mass of formate in the blank is",blank_conc*0.005*0.98,"ug","±",blank_uncert,"ug/L")
+cat("The mass of formate in the zero is",zero_conc*0.005*0.98,"ug","±",zero_uncert,"ug/L")
+cat("The mass of formate in the experiment is",experiment_conc*0.005*0.98,"ug","±",experiment_uncert,"ug/L")
 
 ```
 
@@ -176,9 +256,20 @@ Where M is the mass of formate collected from ambient air, L is the length of th
 *4 points per calculated value with appropriate units, 4 points for correct final values*
 
 ```{r, warning = FALSE, message = FALSE}
+#L=5cm
+#D=0.153 cm^2/s
+#A=5mmD = pir^2 = pi2.5^2= 19.635mm =1.963cm^2
+#t=4hours =14400s
 
+AirConc_control <-((control_mass*5)/(0.153*1.963*14400))
+AirConc_blank <-((blank_mass*5)/(0.153*1.963*14400))
+AirConc_zero <-((zero_mass*5)/(0.153*1.963*14400))
+AirConc_experiment <-((experiment_mass*5)/(0.153*1.963*14400))
 
-
+cat("Concentration of formic acid in the air from the control sampler is", signif(AirConc_control, digits=3), "ug/cm^3")
+cat("Concentration of formic acid in the air from the blank sampler is", signif(AirConc_blank, digits=3), "ug/cm^3")
+cat("Concentration of formic acid in the air from the zero sampler is", signif(AirConc_zero, digits=3), "ug/cm^3")
+cat("Concentration of formic acid in the air from the experiment sampler is", signif(AirConc_experiment, digits=3), "ug/cm^3")
 ```
 
 ### Question 8: Report the final concentration of formic acid in air in mg/m\$\^3\$, with uncertainty. (15 points)
@@ -186,13 +277,31 @@ Where M is the mass of formate collected from ambient air, L is the length of th
 *5 points for correcting for control experiment, 5 points for unit conversion, 5 points for correctly reporting uncertainty with significant figures.*
 
 ```{r final, warning = FALSE, message = FALSE}
+#ug -> mg conversion *0.001
+#cm^3 -> m^3 *0.000001
+#converting Experiment and control to mg/m^3:
+
+Experiment <- 0.00446*0.001/0.000001
+Control<-7.97e-05*0.001/0.000001
 
 
+#converting uncertainty to mg/m^3 from ug/L
+experiment_AirConc_uncert<-((experiment_uncert*0.005*5)/(0.153*1.963*14400))
+control_AirConc_uncert<-((control_uncert*0.005*5)/(0.153*1.963*14400))
+Fin_experiment_Uncert <-(experiment_AirConc_uncert*0.001/0.000001)
+Fin_control_uncert <-(control_AirConc_uncert*0.001/0.000001)
+
+#Error progagation:
+Uncert_prop<- sqrt(Fin_experiment_Uncert^2+Fin_control_uncert^2)
+
+cat("The final concentration of formic acid in the air is", signif(Experiment - Control,digits=3),"±",signif(Uncert_prop,digits=2),"mg/m^3")
 
 ```
 
 ### Question 9: Occupational exposure limits for formic acid generally restrict airborne concentrations to 9 mg/m$^3$ averaged over an 8-hour workday. (5 points)
 
 ### 9a. How does sampling time play a role in this determination? (3 points)
+#We sampled for only 4 hours, so we could expect the exposure over an 8 hour day to be twice as much as the sampled concentration.
 
 ### 9b. Based on these results, do you think it would be safe to spend an 8-hour workday in that space? (2 points)
+With the highest uncertainty, assuming twice as long has twice the exposure, the exposure would be over the limits and even without assuming the highest uncertainty it would be borderline at best and there it would be unsafe conditions.

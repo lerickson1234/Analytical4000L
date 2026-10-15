@@ -1,0 +1,187 @@
+---
+title: "Ambient Ozone Measurements in Alberta"
+author: "Layne Erickson"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(openair)
+library(tidyverse)
+library(ggplot2)
+library(cowplot)
+```
+
+# Week 5+ worksheet: time-resolved data
+This will serve as an introduction to more complex data and analysis as we increase our skills in R. 
+
+### Importing and clearing data
+```{r Lethbridge, warning = FALSE, message=FALSE}
+#Immediately, this looks like it is not importing well!
+OzoneData <- read_csv("OzoneData.csv")
+head(OzoneData)
+
+#Here I've added some line skips, and am re-naming the specific columns to reflect the station names that we have data for
+OzoneData <- read_csv("OzoneData.csv", skip = 28, name_repair ="minimal") 
+
+colnames(OzoneData)[1:10] <- paste0(colnames(OzoneData)[1:10], "_O3_Leth")
+
+colnames(OzoneData)[11:20] <-  sub(".1", "", colnames(OzoneData)[11:20])
+colnames(OzoneData)[11:20] <- paste0(colnames(OzoneData)[11:20], "_CO_Leth")
+
+colnames(OzoneData)[21:30] <-  sub(".2", "", colnames(OzoneData)[21:30])
+colnames(OzoneData)[21:30] <- paste0(colnames(OzoneData)[21:30], "_O3_Calgary")
+
+colnames(OzoneData)[31:40] <-  sub(".3", "", colnames(OzoneData)[31:40])
+colnames(OzoneData)[31:40] <- paste0(colnames(OzoneData)[31:40], "_CO_Calgary")
+
+colnames(OzoneData)[41:50] <-  sub(".4", "", colnames(OzoneData)[41:50])
+colnames(OzoneData)[41:50] <- paste0(colnames(OzoneData)[41:50], "_O3_Edmonton")
+
+colnames(OzoneData)[51:60] <-  sub(".5", "", colnames(OzoneData)[51:60])
+colnames(OzoneData)[51:60] <- paste0(colnames(OzoneData)[51:60], "_CO_Edmonton")
+
+OzoneData <- OzoneData %>%
+  select(contains(c("Start", "Measurement", "Flags"))) %>%
+  mutate(`Measurement Value_O3_Leth` = `Measurement Value_O3_Leth`*1000)
+
+head(OzoneData)
+
+```
+
+### Working with time variables
+Currently, the 'Interval Start' columns are character variables. We want to transform them into datetime variables so they can be manipulated like numeric variables. 
+
+```{r time variables, warning = FALSE, message=FALSE}
+
+
+```
+
+### Plotting data
+Let's visualize the hourly ozone mixing ratio for Lethbridge, Edmonton, and Calgary.
+
+
+```{r plotting, warning = FALSE, message=FALSE}
+
+#Method 1: plotting them all individually
+Leth <- ggplot(OzoneData, aes(x = date, y = `Measurement Value_O3_Leth`))+
+  geom_point() + 
+  theme_bw()+
+  ggtitle("Lethbridge")
+
+
+
+Leth
+
+
+
+#Method 2: plotting them all on the same plot!
+
+#wide form: 
+ggplot(OzoneData,
+       aes(x= date,
+           y = `Measurement Value_O3_Leth`))+
+  geom_point(colour = "blue")+
+  geom_point(aes(x= date,
+                 y = `Measurement Value_O3_Calgary`),
+             colour = "red")+
+  geom_point(aes(x= date,
+                 y = `Measurement Value_O3_Edmonton`),
+             colour = "purple")
+
+#Long form
+
+
+
+ggplot(OzoneDataLong %>% filter(pollutant == "O3"), aes(x = date , y = measurements, colour = location))+
+  geom_point() +
+  theme_bw()
+             
+
+#Method 3: plotting all three graphs together as one
+
+             
+```
+
+## Diurnal plots 
+
+Let's work to understand how ambient ozone levels depend on the time of day.
+```{r diurnal plot,  warning = FALSE, message=FALSE}
+
+#we need to extract hour as a variable from the 'date' column so we can plot it.
+
+
+#this looks okay! We can start to see the diurnal pattern here. 
+ggplot(OzoneLeth, aes(x= Hour, y = measurements))+
+  geom_point() +
+  theme_bw()
+
+#We can simplify our data by plotting the averages instead of all the data. This reduces the complexity of the data, but theoretically continues to hold all the information (more on that later!)
+
+
+
+
+```
+
+## Seasonal plots 
+Let's work to understand how ambient ozone levels depend on the time of year.
+```{r seasonal plot,  warning = FALSE, message=FALSE}
+
+
+
+
+```
+
+## Openair 
+How can packages help us do this quickly?
+```{r openair,  warning = FALSE, message=FALSE}
+
+library(openair)
+
+#It can easily select different part of your data by time
+
+FebData <- selectByDate(OzoneDataLong, month = "Feb")
+head(FebData)
+
+#It can quickly plot the data as a function of all time variables
+
+timeVariation(
+  OzoneDataLong %>%
+    filter(location == "Leth", pollutant == "O3"),
+  pollutant = "measurements",
+  ylab = "O3 (ppb)"
+)
+
+timePlot(OzoneDataLong %>% filter(pollutant == "O3"), 
+  pollutant = "measurements",
+  type = "location",
+  avg.time = "month")
+
+diurnal <- timeVariation(
+    OzoneDataLong %>% 
+      filter(location == "Leth",
+             pollutant == "O3"),
+     pollutant = "measurements",
+     x = "hour")
+
+plot(diurnal, subset="hour")
+
+```
+
+## Reporting ambient ozone 
+The World Health Organization suggests keeping ozone exposure less than a daily maximum 8-hour mean of ~50 ppb. How many exceedances does each site have in a year?
+```{r MDA8, warning = FALSE, message=FALSE}
+
+
+  
+```
+
+## Corrections in the data
+```{r data corrections,  warning = FALSE, message=FALSE}
+
+  
+```
+

@@ -56,7 +56,9 @@ head(OzoneData)
 Currently, the 'Interval Start' columns are character variables. We want to transform them into datetime variables so they can be manipulated like numeric variables. 
 
 ```{r time variables, warning = FALSE, message=FALSE}
-
+OzoneData <- OzoneData %>%
+  mutate(date=as.POSIXct(`Interval Start_O3_Leth`, tz = "MST",format ="%Y-%m-%j %H:%M")) %>%
+  select(!contains("Interval start"))
 
 ```
 
@@ -76,8 +78,18 @@ Leth <- ggplot(OzoneData, aes(x = date, y = `Measurement Value_O3_Leth`))+
 
 Leth
 
+Cal <- ggplot(OzoneData, aes(x = date, y = `Measurement Value_O3_Calgary`))+
+  geom_point() + 
+  theme_bw()+
+  ggtitle("Calgary")
 
+Cal
 
+Ed <- ggplot(OzoneData, aes(x = date, y = `Measurement Value_O3_Edmonton`))+
+  geom_point() + 
+  theme_bw()+
+  ggtitle("Edmonton")
+Ed
 #Method 2: plotting them all on the same plot!
 
 #wide form: 
@@ -92,17 +104,22 @@ ggplot(OzoneData,
                  y = `Measurement Value_O3_Edmonton`),
              colour = "purple")
 
+
 #Long form
+OzoneDataLong <- OzoneData %>%
+  select(!contains("Flags")) %>%
+  pivot_longer(cols = starts_with("Measurement Value"),
+               names_to = c("pollutant","Location"),
+               names_pattern = "Measurement Value_(.*)_(.*)",
+               values_to = "Measurements")
 
-
-
-ggplot(OzoneDataLong %>% filter(pollutant == "O3"), aes(x = date , y = measurements, colour = location))+
+ggplot(OzoneDataLong %>% filter(pollutant == "O3"), aes(x = date , y = Measurements, colour = Location))+
   geom_point() +
   theme_bw()
              
 
 #Method 3: plotting all three graphs together as one
-
+plot_grid(Leth, Cal, Ed, nrow = 1)
              
 ```
 
@@ -112,17 +129,25 @@ Let's work to understand how ambient ozone levels depend on the time of day.
 ```{r diurnal plot,  warning = FALSE, message=FALSE}
 
 #we need to extract hour as a variable from the 'date' column so we can plot it.
-
+OzoneLeth <- OzoneDataLong %>%
+  filter(Location == "Leth",
+         pollutant =="O3") %>%
+  mutate(Hour = format(as.POSIXct(date), "%H"))
 
 #this looks okay! We can start to see the diurnal pattern here. 
-ggplot(OzoneLeth, aes(x= Hour, y = measurements))+
+ggplot(OzoneLeth, aes(x= Hour, y = Measurements))+
   geom_point() +
   theme_bw()
 
 #We can simplify our data by plotting the averages instead of all the data. This reduces the complexity of the data, but theoretically continues to hold all the information (more on that later!)
 
+OzoneLeth <- OzoneLeth %>%
+  group_by(Hour) %>%
+  summarize(mean = mean(Measurements, na.rm = TRUE),sd = sd(Measurements, na.rm=TRUE))
 
-
+ggplot(OzoneLeth, aes(x= Hour, y = mean))+
+  geom_point() +
+  theme_bw()
 
 ```
 
@@ -130,6 +155,25 @@ ggplot(OzoneLeth, aes(x= Hour, y = measurements))+
 Let's work to understand how ambient ozone levels depend on the time of year.
 ```{r seasonal plot,  warning = FALSE, message=FALSE}
 
+OzoneLethSeason <- OzoneDataLong %>%
+  filter(Location == "Leth",
+         pollutant =="O3") %>%
+  mutate(month = format(as.POSIXct(date), "%b"))
+OzoneLethSeason$month <- factor(OzoneLethSeason$month, levels = c("Jan", "Feb", "Mar", "Apr",
+    "May", "Jun", "Jul", "Aug",
+    "Sep", "Oct", "Nov", "Dec"))
+
+ggplot(OzoneLethSeason, aes(x= month, y = Measurements))+
+  geom_point() +
+  theme_bw()
+
+OzoneLethSeason <- OzoneLethSeason %>%
+  group_by(month) %>%
+  summarize(mean = mean(Measurements, na.rm = TRUE),sd = sd(Measurements, na.rm=TRUE))
+
+ggplot(OzoneLethSeason, aes(x= month, y = mean))+
+  geom_point() +
+  theme_bw()
 
 
 
@@ -150,21 +194,21 @@ head(FebData)
 
 timeVariation(
   OzoneDataLong %>%
-    filter(location == "Leth", pollutant == "O3"),
-  pollutant = "measurements",
+    filter(Location == "Leth", pollutant == "O3"),
+  pollutant = "Measurements",
   ylab = "O3 (ppb)"
 )
 
 timePlot(OzoneDataLong %>% filter(pollutant == "O3"), 
-  pollutant = "measurements",
-  type = "location",
+  pollutant = "Measurements",
+  type = "Location",
   avg.time = "month")
 
 diurnal <- timeVariation(
     OzoneDataLong %>% 
       filter(location == "Leth",
              pollutant == "O3"),
-     pollutant = "measurements",
+     pollutant = "Measurements",
      x = "hour")
 
 plot(diurnal, subset="hour")
@@ -174,8 +218,21 @@ plot(diurnal, subset="hour")
 ## Reporting ambient ozone 
 The World Health Organization suggests keeping ozone exposure less than a daily maximum 8-hour mean of ~50 ppb. How many exceedances does each site have in a year?
 ```{r MDA8, warning = FALSE, message=FALSE}
-
-
+OzoneMDA8 <- OzoneDataLong%>%
+  filter(pollutant=="O3")
+MDA8 <- rollingMean(OzoneDataLong %>%
+                      filter(pollutant=="O3"),
+                    type = "Location",
+                    pollutant = "Measurements",
+                    width=8)
+MDA8 <- selectByDate(MDA8, hour = 7:23)
+MDA8 <- timeAverage(MDA8, 
+                    avg.time="day",
+                    statistic = "max",
+                    type = "Location")%>%
+  filter(rolling8Measurements>50)%>%
+  group_by(Location)%>%
+  summarize(count=n())
   
 ```
 

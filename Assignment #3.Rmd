@@ -1,0 +1,112 @@
+---
+title: 'Assignment #3: Ambient Air Quality Data '
+author: "(insert name here)"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE, message = FALSE, warning = FALSE, echo = FALSE}
+knitr::opts_chunk$set(echo = TRUE, out.width = "\\textwidth")
+library(stringr)
+library(ggplot2)
+library(tidyverse)
+library(ggpmisc)
+library(broom)
+library(openair)
+```
+
+#### *Due date: October 23rd, 2026 \@ 11:59 PM*
+
+## Total of 126 points
+
+*Small syntax errors for coding that result in wrong answer are deducted, but otherwise would have obtained the right answer are docked 1 mark. 1 mark will be removed if information is not printed/presented for grading. Please ensure the code is formatted to fit in the PDF output*
+
+You are interested in understanding how the air quality in Lethbridge has changed over the last few decades. You have downloaded data from April 1st, 2010 (the date of the first measurements) to August 27th, 2026 (when Steph downloaded the data/made this assignment) that represents measurements of nitric oxide (NO), nitrogen dioxide (NO~2~) and ozone (O~3~) made in North Lethbridge.
+
+## Section 1: Data download and quality control check (40 points)
+
+### Question 1: Do the following:(15 points)
+
+i.  Import the data into R 
+ii. Rename the columns to accurately represent their contents. Note renaming columns individually will result in a point deduction! 
+iii. Transform one time column into a datetime format. Note the timezone is MST. 
+iv. remove repeating time interval columns 
+v.show the resulting dataframe by printing it with the `head()` function 
+
+```{r Q1, echo = TRUE, warning= FALSE, message= FALSE}
+
+
+```
+
+### Question 2: Summarize the measurement data in the table below.(9 points)
+
+| Pollutant | Reported unit | Measurement Method Name | Time resolution |
+|:---------:|:-------------:|:-----------------------:|:---------------:|
+|        |            |        |           |
+|     |            |      |           |
+|      |            |            |          |
+
+### Question 3: In 2016, quite a bit of data was flagged with a "V". What does the "V" flag mean, and should you remove that data from consideration? (6 points)
+
+You will need to consult the [Alberta Air Quality Data and Reports website](https://www.alberta.ca/air-quality-data-and-reports)
+
+
+
+### Question 4: We want to work with the long form of the data. Pivot the data to its long form, with four columns: date, pollutant, flags and measurement. Show the `head` of the long data. (10 points)
+*8 points for the pivot. -2 points per extra step, 2 points for the head argument*
+
+```{r Q4, echo = TRUE, warning= FALSE, message= FALSE}
+
+```
+
+
+## Section 2: Pollutant trends over time (51 points)
+
+### Question 5: Plot the annual average of all pollutant measurements over time of all three pollutants on a single plot, with its standard deviation. Remember the elements that make a good plot! (20 points)
+Hint: it is easier *not* to use the openair package. 
+
+```{r Q5, echo = TRUE, warning= FALSE, message= FALSE}
+
+  
+```
+
+### Question 6: Plot the annual-average MDA8 of ozone for Lethbridge, with its standard deviation. (15 points)
+
+```{r Q6, echo = TRUE, warning= FALSE, message= FALSE}
+
+
+
+```
+
+### Question 7: Plot the total number of MDA8 exceedances (> 50 ppb) in Lethbridge as a function of year.(10 points)
+
+```{r Q7, echo = TRUE, warning= FALSE, message= FALSE}
+
+
+
+```
+
+### Question 8: from the plots above, how have the pollution levels evolved over time in Lethbridge? (6 points)
+
+
+## Section 3: Nitrogen oxide chemistry (35 points)
+
+### Question 9: Nitric oxide and nitrogen dioxide rapidly interconvert between each other through photolysis and oxidation reactions. Often, they are represented as NO~x~, the sum of both species. Calculate NOx. (15 points)
+
+```{r Q9, echo = TRUE, warning= FALSE, message= FALSE}
+
+
+```
+
+### Question 10: Choose a complete year of data. Generate a diurnal plot for nitric oxide and nitrogen dioxide for that year, along with their standard deviations.(15 points)
+
+```{r Q10, echo = TRUE, warning= FALSE, message= FALSE}
+
+
+```
+
+### Question 11: Hypothesize as to why there is a spike in all three pollutants at a specific time of day.(5 points)
+
+

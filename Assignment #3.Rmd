@@ -35,8 +35,21 @@ iii. Transform one time column into a datetime format. Note the timezone is MST.
 iv. remove repeating time interval columns 
 v.show the resulting dataframe by printing it with the `head()` function 
 
-```{r Q1, echo = TRUE, warning= FALSE, message= FALSE}
+```{r Q1, echo=TRUE, message=FALSE, warning=FALSE}
+A3Data <- read.csv("Assignment3_data.csv", skip=28)
 
+colnames(A3Data)[1:4]<-paste0(colnames(A3Data)[1:4], "NO")
+
+colnames(A3Data)[5:8] <-  sub(".1", "", colnames(A3Data)[5:8])
+colnames(A3Data)[5:8]<-paste0(colnames(A3Data)[5:8], "NO2")
+
+colnames(A3Data)[9:12] <-  sub(".2", "", colnames(A3Data)[9:12])
+colnames(A3Data)[9:12]<-paste0(colnames(A3Data)[9:12], "O3")
+A3Data <- A3Data %>%
+  mutate(date=as.POSIXct(`Interval.StartNO`, tz="MST",format="%Y-%m-%j %H:%M"))
+A3Data <-A3Data %>%
+  select(!contains("Interval"))
+head(A3Data)
 
 ```
 
@@ -44,9 +57,9 @@ v.show the resulting dataframe by printing it with the `head()` function
 
 | Pollutant | Reported unit | Measurement Method Name | Time resolution |
 |:---------:|:-------------:|:-----------------------:|:---------------:|
-|        |            |        |           |
-|     |            |      |           |
-|      |            |            |          |
+|      NO  |       ppm     |Chemiluminescence      |      Hourly     |
+|     NO2|            ppm|    Chemiluminescence  |           Hourly|
+|      O3|          ppm  |       UV Photometry     |          Hourly|
 
 ### Question 3: In 2016, quite a bit of data was flagged with a "V". What does the "V" flag mean, and should you remove that data from consideration? (6 points)
 

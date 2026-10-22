@@ -1,0 +1,249 @@
+---
+title: "NMR"
+author: "Layne"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Delete the hashtag before the three lines of code below before you run them
+# then re-add the hashtag
+# install.packages("ChemoSpec")
+# install.packages("R.utils")
+# install.packages("robustbase")
+
+
+library(ChemoSpec)
+library(R.utils)
+library(ggplot2)
+library(tidyverse)
+library(cowplot)
+library(robustbase)
+library(plotly)
+```
+
+# Working with ChemoSpec
+ChemoSpec is useful for plotting NMR spectra. It will import or read data processed on other analysis software. It can read data stored as 'csv', with two columns of chemical shift and intensity, or JCAMP-DX files (.dx, .DX, .jdx, .JDX). 
+
+We normally import NMR files using the 'files2SpectraObject' argument, but for lecture, we are going to be working with the training data provided by the package. 
+```{r NMR import, warning= FALSE, message= FALSE}
+
+#This line imports the Serenoa repens (Saw Palmetto) Oil Extracts and Reference Oils
+data(SrE.NMR)
+
+#This line provides information 
+sumSpectra(SrE.NMR)
+
+#The names of the spectra can be found here
+SrE.NMR$names
+
+```
+
+Plotting the data is also very straightforward using the ChemoSpec package!
+```{r NMR plot, warning= FALSE, message= FALSE}
+
+#Plotting an individual spectra using the which function
+plotSpectra(
+  SrE.NMR,
+  #This is just picking the first in our list
+  which = c(1),
+  yrange = range(SrE.NMR$data),
+  offset = 0,
+  amplify = 1,
+  lab.pos = mean(SrE.NMR$freq),
+  showGrid = TRUE,
+  leg.loc = "none"
+)
+
+
+#You can also plot multiple spectra on the same plot. This can be helpful to find small differences between the spectra!
+plotSpectra(
+  SrE.NMR,
+  #This is manually picking an example of each oil type
+  which = c(1,2, 14, 16),
+  yrange = range(SrE.NMR$data),
+  offset = 7000000,
+  amplify = 1,
+  lab.pos = 11,
+  showGrid = TRUE,
+  leg.loc = list(x = 0.9, y = 0.9)
+)
+
+
+#You can use logical arguments to specify which plot you want to include
+plotSpectra(
+  SrE.NMR,
+  #This using a logical argument to find all the elements in the list
+  which = which(str_detect(SrE.NMR$names, "pSrE")),
+  yrange = range(SrE.NMR$data),
+  offset = 7000000,
+  amplify = 1,
+  lab.pos = 11,
+  showGrid = TRUE,
+  leg.loc = list(x = 0.9, y = 0.9)
+)
+
+#Try on your own! Can you plot both the OO and the EPO oil? 
+
+plotSpectra(
+  SrE.NMR,
+  which = which(str_detect(SrE.NMR$names, "OO")),
+  yrange = range(SrE.NMR$data),
+  offset = 7000000,
+  amplify = 1,
+  lab.pos = 11,
+  showGrid = TRUE,
+  leg.loc = list(x = 0.9, y = 0.9)
+)
+```
+
+This looks like the inverse of a 'normal' NMR plot that we might see in the literature. Let's invert it, and specify a smaller region of interest. 
+```{r plot cleanup, message= FALSE, warning = FALSE}
+type <- plotSpectra(
+  SrE.NMR,
+  #This is manually picking an example of each oil type
+  which = c(1,2, 14, 16),
+  yrange = range(SrE.NMR$data),
+  offset = 7000000,
+  amplify = 1,
+  lab.pos = 7,
+  showGrid = TRUE,
+  leg.loc = list(x = 0.9, y = 0.9)
+)
+
+type <- type + xlim(7.5, -1)
+
+type
+
+type <- type + ggtitle("Example NMR spectra of all oil types")
+
+type
+```
+
+Looking at the plot above, what do we notice is different between the different types of oil?
+
+```{r normalizing data, message= FALSE, warning = FALSE }
+
+#In this case, we have an internal standard between -0.5 - 0.5 ppm. We only want to normalize to this internal standard
+range <- SrE.NMR$freq > -0.5 & SrE.NMR$freq < 0.5
+
+#normalized spectra
+normSpec <- normSpectra(SrE.NMR, method = "PQN", RangeExpress = range)
+
+```
+
+
+```{r PCA,message= FALSE, warning = FALSE}
+# create the PCA calculation first 
+pca <- c_pcaSpectra(normSpec, choice = "noscale", cent = TRUE)
+
+pcaPlot <- plotScores(SrE.NMR,
+                      pca, 
+                      #Which components to include
+                      pcs = c(1,2), 
+                      #what type of ellipses
+                      ellipse = "rob",
+                      #symbols as well as colours
+                      use.sym = FALSE,
+                      #tolerance for displaying individual labels
+                      tol = 0.01)
+
+pcaPlot <- pcaPlot + ggtitle("NMR PCA Plot")
+
+pcaPlot
+```
+
+```{r scree,message= FALSE, warning = FALSE}
+
+#We use the Scree plot to evaluate how many points of variance we want to run
+plotScree(pca, style = "trad")
+```
+
+```{r PC1 and PC4, message= FALSE, warning = FALSE}
+# Try plotting PC1 vs PC3
+
+
+```
+
+Just for fun: the ChemoSpec package has a way to plot things in 3D. That being said, it didn't work on this data for an unknown (to me) reason! So, here is a similar plot using the plot_ly package. I had to extract some information from our PCA calculation above to plot it. 
+
+```{r 3D plot, message= FALSE, warning = FALSE}
+
+# Extract the first three principal components and add grouping info
+pca_df <- as.data.frame(pca$x[, 1:3])
+pca_df$groups <- SrE.NMR$groups
+
+
+plot_ly(
+  data = pca_df,
+  x = ~PC1,
+  y = ~PC2,
+  z = ~PC3,
+  color = ~groups,
+  colors = c("#1B9E77", "#D95F02", "#7570B3"),
+  type = "scatter3d",
+  mode = "markers",
+  marker = list(size = 5, opacity = 0.8)
+)
+```
+
+Let's try and visalize what the PCA is doing. What chemical characteristics is it identifying as important?
+
+```{r analysis}
+#We can visualize how each frequency contributes to PC1. Positive values count towards it, negative values count against it. 
+EV <- as_tibble(pca$rotation)
+EV <- EV %>% 
+  select(PC1, PC2, PC3) 
+
+EV$frequency <- normSpec$freq
+
+PC1 <- ggplot(EV, aes(frequency, PC1))+
+  geom_point()+
+  theme_bw()+
+  xlim(2,6) +
+  ylim(-0.05,0.05)+
+  annotate("rect", xmin = 4.10, xmax = 4.35, ymin = -Inf, ymax = Inf, 
+           fill = "blue", alpha = 0.2)+
+  annotate("rect", xmin = 5.20, xmax = 5.30, ymin = -Inf, ymax = Inf, 
+           fill = "red", alpha = 0.2)+
+  annotate("rect", xmin = 11, xmax = 12, ymin = -Inf, ymax = Inf, 
+           fill = "yellow", alpha = 0.2)+
+  ggtitle("PC1 Weighting")
+
+
+PC2 <-ggplot(EV, aes(frequency, PC2))+
+  geom_point()+
+  theme_bw()+
+  xlim(2,6) +
+  ylim(-0.05,0.05)+
+  annotate("rect", xmin = 4.10, xmax = 4.35, ymin = -Inf, ymax = Inf, 
+           fill = "blue", alpha = 0.2)+
+  annotate("rect", xmin = 5.20, xmax = 5.30, ymin = -Inf, ymax = Inf, 
+           fill = "red", alpha = 0.2)+
+  annotate("rect", xmin = 11, xmax = 12, ymin = -Inf, ymax = Inf, 
+           fill = "yellow", alpha = 0.2)+
+  ggtitle("PC2 Weighting")
+
+plot_grid(PC1, PC2, nrow = 2)
+
+```
+
+From these graphs, we can see the PC1 prioritizes the glycerol backbone protons, vs PC2 which has a cost to those protons. 
+
+Does this line up with our difference types of oils?
+
+```{r ranking}
+pca_df$names <- SrE.NMR$names
+
+#If we arrange it this way, this is describing the relative size (eigenvalues) of PC1 to each sample. We ordered from lowest to highest. 
+pca_df <- pca_df %>%
+  select(names, PC1, PC2) %>% 
+  arrange(PC1)
+
+#from this output, we can see that PC1 has 
+knitr::kable(pca_df, caption = "Ranking samples from low to high PC1", align = "lcc")
+
+knitr::kable(pca_df %>% arrange(PC2), caption = "Ranking samples from low to high PC2", align = "lcc")
+```

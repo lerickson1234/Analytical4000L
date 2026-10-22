@@ -224,7 +224,8 @@ MDA8 <- rollingMean(OzoneDataLong %>%
                       filter(pollutant=="O3"),
                     type = "Location",
                     pollutant = "Measurements",
-                    width=8)
+                    width=8,
+                    align = "right")
 MDA8 <- selectByDate(MDA8, hour = 7:23)
 MDA8 <- timeAverage(MDA8, 
                     avg.time="day",
@@ -238,7 +239,30 @@ MDA8 <- timeAverage(MDA8,
 
 ## Corrections in the data
 ```{r data corrections,  warning = FALSE, message=FALSE}
-
+OzoneDataWide <- OzoneDataLong %>%
+  pivot_wider(id_cols = c("date","Location"),values_from= "Measurements", names_from="pollutant")
+OzoneDataWide <- OzoneDataWide %>%
+  mutate(O3_corr = ifelse(CO >0.2, O3-(16*CO),O3))
   
+timePlot(selectByDate(OzoneDataWide,
+                      start ="11/8/2025",
+                      end="20/8/2025"), 
+         pollutant = c("O3","O3_corr"),
+         type ="Location")
+         
+MDA8Corr <- rollingMean(OzoneDataWide,
+                    type = "Location",
+                    pollutant = "O3_corr",
+                    width=8,
+                    align = "right")
+MDA8Corr <- selectByDate(MDA8Corr, hour = 7:23)
+MDA8Corr <- timeAverage(MDA8Corr, 
+                    avg.time="day",
+                    statistic = "max",
+                    type = "Location")%>%
+  filter(rolling8O3_corr>50)%>%
+  group_by(Location)%>%
+  summarize(count=n())
+
 ```
 

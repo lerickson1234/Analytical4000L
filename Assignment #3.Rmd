@@ -110,21 +110,16 @@ Hint: it is easier *not* to use the openair package.
 
 ```{r Q5, echo = TRUE, warning= FALSE, message= FALSE}
 A3Annual <- A3Long %>%
-  mutate(
-    month = factor(
-      format(as.POSIXct(date), "%b"),
-      levels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-    )
-  ) %>%
-  group_by(month, Pollutant) %>%
+  mutate(year = format(as.POSIXct(date), "%Y"))
+A3Annual <- A3Annual%>% 
+ group_by(year, Pollutant)%>%
   summarize(
     mean = mean(Measurement, na.rm = TRUE),
     sd = sd(Measurement, na.rm = TRUE),
     .groups = "drop"
   )
 ggplot(A3Annual,
-       aes(x = month,
+       aes(x = year,
            y = mean,
            colour = Pollutant,
            group = Pollutant)) +
@@ -135,6 +130,7 @@ ggplot(A3Annual,
         ymax = mean + sd),
     width = 0.2,
     position= position_dodge(0.5)) +
+  labs(x= "Year", y="Mean (ppm)")+
   theme_bw()
 ```
 
@@ -152,39 +148,43 @@ O3MDA8 <- selectByDate(O3MDA8, hour = 7:23)
 O3MDA8 <- timeAverage(O3MDA8, 
                     avg.time="day",
                     statistic = "max")
-O3MDA8Monthly <- O3MDA8 %>%
-  mutate(
-    month = factor(
-      format(as.POSIXct(date), "%b"),
-      levels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-    )
-  ) %>%
-  group_by(month) %>%
+O3MDA8Annual <- O3MDA8 %>%
+  mutate(year = format(as.POSIXct(date), "%Y"))
+O3MDA8Annual <- O3MDA8Annual%>% 
+ group_by(year)%>%
   summarize(
-    mean = mean(Measurement, na.rm = TRUE),
-    sd = sd(Measurement, na.rm = TRUE),
+    mean = mean(rolling8Measurement, na.rm = TRUE),
+    sd = sd(rolling8Measurement, na.rm = TRUE),
     .groups = "drop"
   )
   
-ggplot(O3MDA8Monthly, aes(x = month, y = mean)) +
+ggplot(O3MDA8Annual, aes(x = year, y = mean)) +
   geom_point() +
-  geom_line() +
+  geom_line()  +
+  labs(x= "Year", y= "MDA8 O3 (PPM)")+
   theme_bw() +
   geom_errorbar(
     aes(ymin = mean - sd,
         ymax = mean + sd),
-    width = 0.2
-  ) 
+    width = 0.2)
 ```
 
 ### Question 7: Plot the total number of MDA8 exceedances (> 50 ppb) in Lethbridge as a function of year.(10 points)
 
 ```{r Q7, echo = TRUE, warning= FALSE, message= FALSE}
-
-filter(rolling8Measurement>0.050)%>%
-  summarize(count=n())
-
+O3MDA8Excess <- O3MDA8 %>%
+  mutate(year = format(as.POSIXct(date), "%Y")) %>%
+  filter(rolling8Measurement > 0.05) %>%
+  group_by(year) %>%
+  summarize(
+    exceedances = n(),
+    .groups = "drop"
+  )
+ggplot(O3MDA8Excess, aes(x = year, y = exceedances)) +
+  geom_col(fill="grey") +
+  geom_line()  +
+  labs(title="MDA8 Daily Exceedances by Year", x= "Year", y= "Exceedances")+
+  theme_bw() 
 ```
 
 ### Question 8: from the plots above, how have the pollution levels evolved over time in Lethbridge? (6 points)
@@ -195,7 +195,8 @@ filter(rolling8Measurement>0.050)%>%
 ### Question 9: Nitric oxide and nitrogen dioxide rapidly interconvert between each other through photolysis and oxidation reactions. Often, they are represented as NO~x~, the sum of both species. Calculate NOx. (15 points)
 
 ```{r Q9, echo = TRUE, warning= FALSE, message= FALSE}
-
+A3NOX <- A3Data %>%
+  mutate( measurement.NOx = Measurement.ValueNO + Measurement.ValueNO2)
 
 ```
 

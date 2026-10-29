@@ -64,14 +64,42 @@ head(A3Data)
 ### Question 3: In 2016, quite a bit of data was flagged with a "V". What does the "V" flag mean, and should you remove that data from consideration? (6 points)
 
 You will need to consult the [Alberta Air Quality Data and Reports website](https://www.alberta.ca/air-quality-data-and-reports)
-
+Data flagged with "V" is "Valid" data which passed some level of quality control and therefore does not need to be removed
 
 
 ### Question 4: We want to work with the long form of the data. Pivot the data to its long form, with four columns: date, pollutant, flags and measurement. Show the `head` of the long data. (10 points)
 *8 points for the pivot. -2 points per extra step, 2 points for the head argument*
 
 ```{r Q4, echo = TRUE, warning= FALSE, message= FALSE}
+  measurements <- A3Data %>%
+  select(date, starts_with("Measurement.Value")) %>%
+  pivot_longer(
+    -date,
+    names_to = "Pollutant",
+    values_to = "Measurement"
+  ) %>%
+  mutate(
+    Pollutant = sub("Measurement\\.Value", "", Pollutant)
+  )
 
+flags <- A3Data %>%
+  select(date, starts_with("Flags")) %>%
+  pivot_longer(
+    -date,
+    names_to = "Pollutant",
+    values_to = "Flag"
+  ) %>%
+  mutate(
+    Pollutant = sub("Flags", "", Pollutant)
+  )
+
+A3Long<- left_join(
+  measurements,
+  flags,
+  by = c("date", "Pollutant")
+)
+
+head(A3Long)
 ```
 
 
@@ -81,23 +109,81 @@ You will need to consult the [Alberta Air Quality Data and Reports website](http
 Hint: it is easier *not* to use the openair package. 
 
 ```{r Q5, echo = TRUE, warning= FALSE, message= FALSE}
-
-  
+A3Annual <- A3Long %>%
+  mutate(
+    month = factor(
+      format(as.POSIXct(date), "%b"),
+      levels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+    )
+  ) %>%
+  group_by(month, Pollutant) %>%
+  summarize(
+    mean = mean(Measurement, na.rm = TRUE),
+    sd = sd(Measurement, na.rm = TRUE),
+    .groups = "drop"
+  )
+ggplot(A3Annual,
+       aes(x = month,
+           y = mean,
+           colour = Pollutant,
+           group = Pollutant)) +
+  geom_point(position = position_dodge(0.5), size = 3) +
+  geom_line() +
+  geom_errorbar(
+    aes(ymin = mean - sd,
+        ymax = mean + sd),
+    width = 0.2,
+    position= position_dodge(0.5)) +
+  theme_bw()
 ```
 
 ### Question 6: Plot the annual-average MDA8 of ozone for Lethbridge, with its standard deviation. (15 points)
 
 ```{r Q6, echo = TRUE, warning= FALSE, message= FALSE}
-
-
-
+O3MDA8 <- A3Long%>%
+  filter(Pollutant=="O3")
+O3MDA8 <- rollingMean(A3Long %>%
+                      filter(Pollutant=="O3"),
+                    pollutant = "Measurement",
+                    width=8,
+                    align = "right")
+O3MDA8 <- selectByDate(O3MDA8, hour = 7:23)
+O3MDA8 <- timeAverage(O3MDA8, 
+                    avg.time="day",
+                    statistic = "max")
+O3MDA8Monthly <- O3MDA8 %>%
+  mutate(
+    month = factor(
+      format(as.POSIXct(date), "%b"),
+      levels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+    )
+  ) %>%
+  group_by(month) %>%
+  summarize(
+    mean = mean(Measurement, na.rm = TRUE),
+    sd = sd(Measurement, na.rm = TRUE),
+    .groups = "drop"
+  )
+  
+ggplot(O3MDA8Monthly, aes(x = month, y = mean)) +
+  geom_point() +
+  geom_line() +
+  theme_bw() +
+  geom_errorbar(
+    aes(ymin = mean - sd,
+        ymax = mean + sd),
+    width = 0.2
+  ) 
 ```
 
 ### Question 7: Plot the total number of MDA8 exceedances (> 50 ppb) in Lethbridge as a function of year.(10 points)
 
 ```{r Q7, echo = TRUE, warning= FALSE, message= FALSE}
 
-
+filter(rolling8Measurement>0.050)%>%
+  summarize(count=n())
 
 ```
 

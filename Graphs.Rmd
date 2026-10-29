@@ -1,0 +1,269 @@
+---
+---
+title: "Graph Workbook"
+author: "Steph Schneider"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+library(ggplot2)
+library(tidyverse)
+library(cowplot)
+library(viridis)
+library(plotly)
+```
+
+# Scatterplots
+We've already been introduced to many scatterplots! We've used a scatterplot to generate a linear calibration curve: 
+```{r cal curve}
+#You may have to change your working directory here! I saved all my workbooks and data in a specific folder called "ethyl carbamate", so I have to specify that in the file name.  
+calibration <- read.csv("EC_calibration.csv")
+
+#I'm removing the data we removed before
+calibration[which(calibration$fluor_signal_area == 220.5), 'fluor_signal_area'] <- NA
+calibration[which(calibration$conc > 40), 'ms_signalintensity'] <- NA
+calibration[which(calibration$ms_signalintensity == 4009), 'ms_signalintensity'] <- NA
+
+HPLC <- ggplot(calibration , aes(conc_ug_L, fluor_signal_area)) + 
+  geom_point()+
+  geom_smooth(method = "lm")+
+  labs(title = "Final HPLC Calibration Curve",
+       x = "concentration of ethyl carbamide (\u00B5g/L)",
+       y = "fluorescence (au)") +
+  theme_bw(base_size = 10)+
+  ylim(0,800)+
+  xlim(5,50)
+
+GC <- ggplot(calibration , aes(conc_ug_L, ms_signalintensity)) + 
+  geom_point()+
+  geom_smooth(method = "lm")+
+  labs(title = "Final GC Calibration Curve",
+       x = "concentration of ethyl carbamide (\u00B5g/L)",
+       y = "signal intensity (counts)") +
+  theme_bw(base_size = 10)+
+  xlim(0,40)+
+  ylim(0,10000)
+
+calplots <- plot_grid(HPLC, GC)
+
+calplots
+
+#This is how you save a plot to insert into other work!
+
+ggsave( "CalCurves.png", plot = calplots, dpi = 500, height = 4, width = 8, units = "in")
+```
+
+Dual axis scatterplots
+```{r dual axis}
+
+coeff <- 30
+dual <- ggplot(calibration , aes(conc_ug_L, ms_signalintensity )) + 
+  geom_point(size = 3, colour = "blue")+
+  geom_point(aes(conc_ug_L, fluor_signal_area*coeff), size = 3, colour = "red")+
+  labs(title = "All Calibration Curves",
+       x = "concentration of ethyl carbamide (\u00B5g/L)",
+       y = "signal intensity (counts)") +
+  theme_bw()+
+  xlim(0,40)+
+  ylim(0,10000)+
+  scale_y_continuous(
+    
+    # Features of the first axis
+    name = "signal intensity (counts)",
+    
+    # Add a second axis and specify its features
+    sec.axis = sec_axis(~./coeff, name="fluorescence (au)")
+  ) +
+  theme(legend.position = "none", 
+        axis.title.y.right = element_text(colour = "red"), 
+        axis.title.y.left = element_text(colour = "blue"), 
+        axis.text.y.left = element_text(colour = "blue"), 
+        axis.text.y.right = element_text(colour = "red"))
+
+dual
+```
+
+To discuss overplotting, we first have to import the ozone data we used previously.
+```{r ozone import}
+
+##Here is the code we used to import the ozone data. You will have to specify your working directory!
+
+OzoneData <- read_csv("OzoneData.csv", skip = 28, name_repair ="minimal") 
+
+colnames(OzoneData)[1:10] <- paste0(colnames(OzoneData)[1:10], "_O3_Leth")
+
+colnames(OzoneData)[11:20] <-  sub(".1", "", colnames(OzoneData)[11:20])
+colnames(OzoneData)[11:20] <- paste0(colnames(OzoneData)[11:20], "_CO_Leth")
+
+colnames(OzoneData)[21:30] <-  sub(".2", "", colnames(OzoneData)[21:30])
+colnames(OzoneData)[21:30] <- paste0(colnames(OzoneData)[21:30], "_O3_Calgary")
+
+colnames(OzoneData)[31:40] <-  sub(".3", "", colnames(OzoneData)[31:40])
+colnames(OzoneData)[31:40] <- paste0(colnames(OzoneData)[31:40], "_CO_Calgary")
+
+colnames(OzoneData)[41:50] <-  sub(".4", "", colnames(OzoneData)[41:50])
+colnames(OzoneData)[41:50] <- paste0(colnames(OzoneData)[41:50], "_O3_Edmonton")
+
+colnames(OzoneData)[51:60] <-  sub(".5", "", colnames(OzoneData)[51:60])
+colnames(OzoneData)[51:60] <- paste0(colnames(OzoneData)[51:60], "_CO_Edmonton")
+
+OzoneData <- OzoneData %>%
+  select(contains(c("Start", "Measurement", "Flags"))) %>%
+  mutate(`Measurement Value_O3_Leth` = `Measurement Value_O3_Leth`*1000)
+
+OzoneData <- OzoneData %>%
+  mutate(date = as.POSIXct(`Interval Start_O3_Leth`, tz = "MST", format = "%Y-%m-%j %H:%M")) %>%
+  select(!contains("Interval Start"))
+
+OzoneDataLong <- OzoneData %>%
+  select(!contains("Flags"))%>%
+  pivot_longer(cols = starts_with("Measurement Value"), 
+               names_to = c("pollutant", "location"),
+               names_pattern = "Measurement Value_(.*)_(.*)",
+               values_to = "measurements")
+```
+
+
+```{r overplot}
+Leth <- ggplot(OzoneDataLong %>%
+  filter(location == "Leth", pollutant == "O3") %>%
+  mutate(Hour = format(as.POSIXct(date), "%H")),
+  aes(x= Hour, y = measurements))+
+  geom_point() +
+  theme_bw()+
+  labs(title = "Initial Plot")
+
+Leth
+
+#Solution 2 - sampling points
+
+Leth <- ggplot(OzoneDataLong %>%
+  filter(location == "Leth", pollutant == "O3") %>%
+  mutate(Hour = format(as.POSIXct(date), "%H"))%>%
+  sample_frac(0.10) ,
+  aes(x= Hour, y = measurements))+
+  geom_point() +
+  theme_bw()+
+  labs(title = "Sampling Solution")
+
+Leth
+
+#Solution 3 - transparency
+Leth <- ggplot(OzoneDataLong %>%
+  filter(location == "Leth", pollutant == "O3") %>%
+  mutate(Hour = format(as.POSIXct(date), "%H")),
+  aes(x= Hour, y = measurements))+
+  geom_point(colour = "purple", alpha = 0.2) +
+  theme_bw()+
+  labs(title = "Transparency Solution")
+
+Leth
+
+#Solution 4 - density
+Leth <- ggplot(OzoneDataLong %>%
+  filter(location == "Leth", pollutant == "O3") %>%
+  mutate(Hour = format(as.POSIXct(date), "%H")),
+  aes(x= Hour, y = measurements) ) +
+  geom_bin2d(binwidth = c(1, 1)) +
+  scale_fill_viridis_c() +  # High-contrast color palette
+  theme_minimal() +
+  labs(title = "2D Solution", fill = "Count")
+
+Leth
+
+#Solution 5: jittering
+Leth <- ggplot(OzoneDataLong %>%
+  filter(location == "Leth", pollutant == "O3") %>%
+  mutate(Hour = format(as.POSIXct(date), "%H")),
+  aes(x= Hour, y = measurements))+
+  geom_jitter(width = 0.2) +
+  theme_bw()+
+  labs(title = "Jittering")
+
+Leth
+```
+When should we plot with lines vs points? Lines can help visualize data that is known to be linked together! For example time!
+```{r lines}
+Leth <- ggplot(OzoneData, aes(x = date, y = `Measurement Value_O3_Leth`))+
+  geom_point() + 
+  theme_bw()+
+  ggtitle("Lethbridge")
+Leth
+
+Leth <- ggplot(OzoneData, aes(x = date, y = `Measurement Value_O3_Leth`))+
+  geom_line() + 
+  theme_bw()+
+  ggtitle("Lethbridge")
+
+Leth
+
+# Great for data exploration!
+ggplotly(Leth)
+```
+
+```{r barplot}
+O3_summary <- OzoneDataLong %>%
+  filter(location == "Leth", pollutant == "O3") %>%
+  mutate(Hour = format(as.POSIXct(date), "%H")) %>%
+  group_by(Hour) %>%
+  summarise(mean = mean(measurements, na.rm = TRUE), 
+            sd = sd(measurements, na.rm = TRUE))
+         
+         
+Leth <- ggplot(O3_summary,
+  aes(x= Hour, y = mean))+
+  geom_col() +
+  theme_bw()+
+  geom_errorbar(
+    aes(ymin = mean - sd, ymax = mean + sd), 
+    width = 0.2, 
+    color = "black", 
+    size = 1
+  ) +
+  labs(title = "Bar Plot")
+
+Leth
+
+```
+
+```{r boxplot}
+
+
+Leth <- ggplot(OzoneDataLong %>%
+  filter(location == "Leth", pollutant == "O3") %>%
+  mutate(Hour = format(as.POSIXct(date), "%H")) %>%
+  group_by(Hour),
+  aes(x = Hour, y = measurements)) +
+  geom_boxplot(alpha = 0.7, outlier.color = "red", outlier.shape = 16) 
+  theme_minimal() +
+  theme(legend.position = "none")
+
+Leth
+
+#Combining with jitter!
+  
+Leth <- ggplot(OzoneDataLong %>%
+  filter(location == "Leth", pollutant == "O3") %>%
+  mutate(Hour = format(as.POSIXct(date), "%H")) %>%
+  group_by(Hour),
+  aes(x = Hour, y = measurements)) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  geom_jitter(width = 0.2, alpha = 0.2, size = 1)+
+  geom_boxplot(alpha = 0.7, outlier.color = "red", outlier.shape = 16)
+  
+Leth
+
+```
+
+Try on your own to find and tell a story with ozone data from Calgary and/or Edmonton.
+
+1) Find a compelling part of the data
+2) display it visually!
+```{r}
+
+```

@@ -89,7 +89,7 @@ plotSpectra(
 
 plotSpectra(
   SrE.NMR,
-  which = which(str_detect(SrE.NMR$names, "OO")),
+  which = which(str_detect(SrE.NMR$names, "OO")|(str_detect(SrE.NMR$names, "EPO"))),
   yrange = range(SrE.NMR$data),
   offset = 7000000,
   amplify = 1,
@@ -239,7 +239,7 @@ pca_df$names <- SrE.NMR$names
 
 #If we arrange it this way, this is describing the relative size (eigenvalues) of PC1 to each sample. We ordered from lowest to highest. 
 pca_df <- pca_df %>%
-  select(names, PC1, PC2) %>% 
+  select(groups, PC1, PC2) %>% 
   arrange(PC1)
 
 #from this output, we can see that PC1 has 

@@ -196,7 +196,59 @@ ggplot(O3MDA8Excess, aes(x = year, y = exceedances)) +
 
 ```{r Q9, echo = TRUE, warning= FALSE, message= FALSE}
 A3NOX <- A3Data %>%
-  mutate( measurement.NOx = Measurement.ValueNO + Measurement.ValueNO2)
+  mutate( Measurement.ValueNOx = Measurement.ValueNO + Measurement.ValueNO2)
+measurementsNox <- A3NOX %>%
+  select(date, starts_with("Measurement.Value")) %>%
+  pivot_longer(
+    -date,
+    names_to = "Pollutant",
+    values_to = "Measurement"
+  ) %>%
+  mutate(
+    Pollutant = sub("Measurement//.Value", "", Pollutant)
+  )
+
+flagsNox <- A3NOX %>%
+  select(date, starts_with("Flags")) %>%
+  pivot_longer(
+    -date,
+    names_to = "Pollutant",
+    values_to = "Flag"
+  ) %>%
+  mutate(
+    Pollutant = sub("Flags", "", Pollutant)
+  )
+
+A3NOXLong <- left_join(
+  measurementsNox,
+  flagsNox,
+  by = c("date", "Pollutant")
+)
+A3NOXLong <- A3NOXLong %>%
+  mutate(year = format(as.POSIXct(date), "%Y"))
+
+A3NOXLong <- A3NOXLong%>% 
+ group_by(year, Pollutant)%>%
+  summarize(
+    mean = mean(Measurement, na.rm = TRUE),
+    sd = sd(Measurement, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+ggplot(A3NOXLong,
+       aes(x = year,
+           y = mean,
+           colour = Pollutant,
+           group = Pollutant)) +
+  geom_point(position = position_dodge(0.5), size = 3) +
+  geom_line() +
+  geom_errorbar(
+    aes(ymin = mean - sd,
+        ymax = mean + sd),
+    width = 0.2,
+    position= position_dodge(0.5)) +
+  labs(x= "Year", y="Mean (ppm)")+
+  theme_bw()
 
 ```
 

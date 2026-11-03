@@ -238,7 +238,7 @@ Leth <- ggplot(OzoneDataLong %>%
   mutate(Hour = format(as.POSIXct(date), "%H")) %>%
   group_by(Hour),
   aes(x = Hour, y = measurements)) +
-  geom_boxplot(alpha = 0.7, outlier.color = "red", outlier.shape = 16) 
+  geom_boxplot(alpha = 0.7, outlier.color = "red", outlier.shape = 16) +
   theme_minimal() +
   theme(legend.position = "none")
 
@@ -265,5 +265,35 @@ Try on your own to find and tell a story with ozone data from Calgary and/or Edm
 1) Find a compelling part of the data
 2) display it visually!
 ```{r}
+Ed <- ggplot(OzoneData, aes(x = date, y = `Measurement Value_O3_Edmonton`))+
+  geom_line() + 
+  theme_bw()+
+  ggtitle("Edmonton")
+
+Ed
+
+# Great for data exploration!
+ggplotly(Ed)
+
+Ed <- ggplot(OzoneDataLong %>%
+  filter(location == "Edmonton", pollutant == "O3") %>%
+  mutate(Month = format(as.POSIXct(date), "%m")) %>%
+  group_by(Month),
+  aes(x = Month, y = measurements)) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  geom_jitter(width = 0.2, alpha = 0.2, size = 1)+
+  geom_boxplot(alpha = 0.7, outlier.color = "red", outlier.shape = 16)
+Ed
+
+Ed <- ggplot(OzoneDataLong %>%
+  mutate(Month = format(as.POSIXct(date), "%m")) %>%
+  filter(location == "Edmonton", pollutant == "O3",Month=="08")+
+  aes(x = date, y = measurements)) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  geom_jitter(width = 0.2, alpha = 0.2, size = 1)+
+  geom_boxplot(alpha = 0.7, outlier.color = "red", outlier.shape = 16)
+Ed
 
 ```

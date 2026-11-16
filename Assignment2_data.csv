@@ -1,0 +1,26 @@
+﻿Standard concentration,Formate peak area (us*min),passive_exp_type,unknown_peakarea
+10ug/L,0.0131,control ,0.013814134
+10ug/L,0.0138,control ,0.014341257
+10ug/L,0.0129,control ,0.015386753
+50ug/L,0.0419,blank,0.013272774
+50ug/L,0.052,blank,0.01532831
+50ug/L,0.0405,blank,0.013299306
+200ug/L,0.1658,zero,0.040556319
+200ug/L,0.166,zero,0.031311605
+200ug/L,0.1655,zero,0.024429429
+400ug/L,0.278,experiment,0.568737662
+400ug/L,0.2775,experiment,0.584659114
+400ug/L,0.2777,experiment,0.575927995
+600ug/L,0.4293,,
+600ug/L,0.4296,,
+600ug/L,0.43,,
+800ug/L,0.58,,
+800ug/L,0.5823,,
+800ug/L,0.5777,,
+1000ug/L,0.722,,
+1000ug/L,0.733,,
+1000ug/L,0.746,,
+1200ug/L,1.852,,
+1200ug/L,0.9015,,
+1200ug/L,0.871,,
+1200ug/L,0.8925,,

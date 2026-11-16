@@ -1,0 +1,320 @@
+---
+title: 'Assignment 4: PCA'
+author: "Layne Erickson"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      warning = FALSE,
+                      message = FALSE)
+library(ChemoSpec)
+library(R.utils)
+library(ggplot2)
+library(tidyverse)
+library(plotly)
+library(cowplot)
+```
+
+# Assignment 4: PCA plots
+
+*100 points total*
+
+You are a food safety chemist responsible for ensuring that the honey sold locally is real honey, and has not been adulterated with simple syrup sugars, like maltose and sucrose. You regularly process honey from a variety of companies. You receive a sample from a new company, BeesKnees$^\text{TM}$. You need to validate if they are selling real honey by comparing it to other honey samples. You have a library of honey samples that include pure, adulterated and Manuka honey.
+
+## Section 1: Importing data and honey library
+
+#### Question 1: Run the code below to create your library titled 'spec'. Make sure you fill in the argument 'file' with the location of the files in your HoneyDatabase folder in your working directory. (3 points)
+
+```{r, echo = FALSE, warning= FALSE, message = FALSE, results='hide'}
+
+spec <- files2SpectraObject(
+##Search through the entire working directory for CSV files
+recursive = TRUE,
+debug = TRUE,
+##Specify the sample names of interest by inclusive criteria
+gr.crit= c("Pure",
+           "AdultH",
+           "ManukaHoney",
+           "BeesKnees"),
+##Automatically apply colours to the sample groups
+gr.cols = "Col12",
+##Define the units of the x-axis
+freq.unit = "ppm",
+##Define the units of the y-axis
+int.unit = "intensity",
+##Description of the dataset
+descrip = "NMR PCA Test",
+##Read all files with this extension.
+fileExt = "\\.(csv|CSV)$",
+##Save this spectra object to an R data file just in case.
+out.file = "SyrupData",
+header = FALSE,
+path = "HoneyDatabase"
+)
+##
+options(chemoSpecGraphics = 'ggplot2')
+
+```
+
+The NMR spectra of honey contain several distinct areas. Below, I've included a plot highlighting a few key regions using the Manuka Honey 6 spectra. Five distinct regions are highlighted; the glucose (beta and alpha anomeric carbon), water, sucrose/maltose (a sign of adulteration), methylglyoxal (sign of antimicrobial properties) and the general sugar region. This can be used as a reference throughout the assignment.
+
+```{r, echo = FALSE}
+
+example_spectra <- plotSpectra(
+  spec,
+  which = which(str_detect(spec$names, "Pure_51")),
+  yrange = c(0,650),
+  amplify = 1,
+  lab.pos = 7,
+  showGrid = TRUE,
+  leg.loc = "none"
+)
+
+ex_spectra <- example_spectra + 
+  theme_bw()+
+  xlim(6,1) + 
+  annotate("rect",
+           xmin = 5.26,
+           xmax = 5.20,
+           ymin = 0,
+           ymax = 700, 
+           fill = "blue",
+           alpha = 0.2)+
+  annotate("rect",
+           xmin = 4.68,
+           xmax = 4.58,
+           ymin = 0,
+           ymax = 700, 
+           fill = "blue",
+           alpha = 0.2)+
+  annotate("text",
+           x = 5.1,
+           y = 300,
+           label = "glucose",
+           colour = "blue")+
+  annotate("rect",
+           xmin = 4.3,
+           xmax = 3.1,
+           ymin = 0,
+           ymax = 700, 
+           fill = "darkred",
+           alpha = 0.2)+
+  annotate("text", x = 3.8,
+           y = 400,
+           label = "sucrose/fructose/etc",
+           colour = "darkred")+
+  annotate("rect",
+           xmin = 4.95,
+           xmax = 4.68,
+           ymin = 0,
+           ymax = 700, 
+           fill = "yellow4",
+           alpha = 0.2)+
+  annotate("text",
+           x = 5,
+           y = 100,
+           label = "Water",
+           colour = "yellow4")+
+  theme(legend.position = "none")+
+  ggtitle("Manuka Honey 6 Spectra")+
+  annotate("rect",
+           xmin = 5.48,
+           xmax = 5.36,
+           ymin = 0,
+           ymax = 700, 
+           fill = "hotpink", alpha = 0.2)+
+  annotate("text",
+           x = 5.5,
+           y = 200,
+           label = "Sucrose/maltose",
+           colour = "hotpink")+
+  annotate("rect",
+           xmin = 2.34,
+           xmax = 2.31,
+           ymin = 0,
+           ymax = 700, 
+           fill = "orange", alpha = 0.2)+
+  annotate("rect",
+           xmin = 1.47,
+           xmax = 1.44,
+           ymin = 0,
+           ymax = 700, 
+           fill = "orange", alpha = 0.2)+  
+  annotate("text",
+           x = 1.7,
+           y = 200,
+           label = "methylglyoxal",
+           colour = "orange")
+
+ggplotly(ex_spectra)
+
+```
+
+#### Question 2: summarize the type of samples included in the imported NMR library in a table. The table should only category names and sample number. (8 points)
+
+```{r, include = TRUE}
+
+```
+
+| Category    | Sample number |
+|-------------|---------------|
+| AdultH      | 1-16          |
+| Beesknees   | 17            |
+| ManukaHoney | 18-22         |
+| Pure        | 23-71         |
+
+#### Question 3: Your first unknown sample is called 'BeesKnees.csv' and was imported with your NMR library. Plot the NMR spectra of your unknown sample, with respect to NMR spectra conventions. Make sure the spectra spans the maximum area of the plot. (9 points)
+
+```{r, warning = FALSE}
+Type <- plotSpectra(
+  spec,
+  which = c(17),
+  yrange = c(0,800),
+  offset = 0,
+  amplify = 1,
+  lab.pos = mean(spec$freq),
+  showGrid = TRUE,
+  leg.loc = "none"
+)
+Type <- Type +xlim(7,-1)
+Type
+```
+
+## Section 2: Prepping our data for PCA
+
+#### Question 4: Before preparing the samples, all glassware is cleaned with acetone. What is the representative chemical shift of acetone in an NMR spectra, in D2O? Cite the source (in ACS format) where you found this information. Hint: go check the example NMR spectra! (3 points)
+
+Acetone has a singlet peak at \~2.08 in D2O solvent H NMR^(1)^\
+(1)Fulmer, G. R.; Miller, A. J. M.; Sherden, N. H.; Gottlieb, H. E.; Nudelman, A.; Stoltz, B. M.; Bercaw, J. E.; Goldberg, K. I. NMR Chemical Shifts of Trace Impurities: Common Laboratory Solvents, Organics, and Gases in Deuterated Solvents Relevant to the Organometallic Chemist. Organometallics 2010, 29 (9), 2176–2179. <https://doi.org/10.1021/om100106e>.
+
+#### Question 5: We don't want to include any contaminant peaks in our PCA, including solvents like acetone and water. Remove acetone and water from *all* peaks in the spectra, across a range of at least 0.3 ppm to ensure differences in shift and contamination width are accounted for. Make sure you do not remove any important peaks. Use the function 'removeFreq' in the ChemoSpec package. (5 points)
+
+```{r}
+#H2O peak = ~4.81
+#Acetone peak = 2.08
+
+
+to_remove <- (spec$freq > 4.66 & spec$freq < 4.95) |
+             (spec$freq > 1.93 & spec$freq < 2.23)
+NewSpec <- removeFreq(
+  spec,
+  rem.freq = to_remove
+)
+is.logical(to_remove)
+
+```
+
+#### Question 6: Why do we want to remove the acetone and water peak before PCA? (8 points)
+Because if some samples are contaminated and others are not, there will be very large differences between them which will affect the what is seen as important during PcA
+
+#### Question 7: each sample contains 0.05% of 3-(trimethylsilyl) propionic-2,2,3,3,-d4 acid sodium salt (TSP) as an internal standard. Its primary reference peak is found at 0.00 ppm. Normalize all the spectra to that internal standard using the normSpectra function, with the PQN method. Then, remove the internal standard peak before we calculate the PCA. (8 points)
+
+```{r}
+NormSpec <- normSpectra(
+  spec,
+  method = "PQN",
+  RangeExpress = "0.05 > ppm > -0.05"
+)
+NormSpec <- removeFreq(
+  NormSpec,
+  rem.freq = NormSpec$freq >= -0.05 &
+             NormSpec$freq <= 0.05)
+```
+
+#### Question 8: Show the spectra for any pure honey sample before acetone cleaning, after acetone cleaning, and after normalization. Use the cowplot library to plot them as three stacked horizontal panels. Note that points are awarded for plot readability. Indicate which sample you used in the plot title. (12 points)
+
+```{r, fig.height=8, fig.width=8}
+RawPure <- plotSpectra(
+  spec,
+  which = c(25),
+  yrange = c(0,800),
+  offset = 0,
+  amplify = 1,
+  lab.pos = mean(spec$freq),
+  showGrid = TRUE,
+  leg.loc = "none"
+)
+
+CleanPure<- plotSpectra(
+  NewSpec,
+  which = c(25),
+  yrange = c(0,800),
+  offset = 0,
+  amplify = 1,
+  lab.pos = mean(NewSpec$freq),
+  showGrid = TRUE,
+  leg.loc = "none"
+)
+NormPure <- plotSpectra(
+  NormSpec,
+  which = c(25),
+  yrange = c(0,800),
+  offset = 0,
+  amplify = 1,
+  lab.pos = mean(NormSpec$freq),
+  showGrid = TRUE,
+  leg.loc = "none"
+)
+
+combined_plot <- plot_grid(RawPure,
+                           CleanPure,
+                           NormPure,
+                           ncol =1,
+                           align ="v",
+                           axis ="lr")
+
+
+
+
+
+
+combined_plot
+```
+
+## Section 3: PCA analysis
+
+#### Question 9: Create the PCA. Plot PC1 vs PC2. (10 points)
+
+```{r}
+
+```
+
+#### Question 10a: What is the total variance represented by PC1 and PC2? (2 points)
+
+```{r}
+
+```
+
+#### Question 10b: How many PC would be need to visualize to capture 75% of the total variance? (7 points)
+
+## Section 4: Discussion and final conclusions
+
+#### Question 11: PC1 (and other PCs) categorize the honeys into three separate groups. Plot a 3D plot to visualize the first three PCs and define the three groups by their PC values using the following terms:
+
+- high
+
+- low
+
+- medium
+
+- across all
+
+- across negative
+
+- across positive
+
+You can decide which group is numbered what, but be consistent below! (15 points)
+
+```{r}
+
+```
+
+| Group       | PC1 | PC2 | PC3 |
+|-------------|-----|-----|-----|
+| Pure        |     |     |     |
+| Adulturated |     |     |     |
+| Manuka      |     |     |     |
+
+#### Question 12: Based on the analysis we've done so far, suggest which type of honey would best describe BeesKnees, and why. (10 points)

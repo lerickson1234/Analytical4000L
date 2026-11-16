@@ -97,7 +97,8 @@ example_data <- csv_data %>%
   mutate(example_column = paste(Name, Age, Score, " Collated data"))
 csv_data
 
-#The second input is calling the default csv data and not the mutated csv data and is therefore less correct
+#The second input is calling the default csv data and not the mutated csv data and is therefore 
+#less correct
 ```
 
 ## Question 6 (10 points)
@@ -114,11 +115,11 @@ csv_data
 
 
 scatter_plot <- ggplot(csv_data, aes(x=Age,y=Score)) +
-    geom_point(aes(color=Score>95), size=3)+
+    geom_point(aes(color=Score>95), size=3,show.legend = FALSE)+
   scale_color_manual(values=c("FALSe"="black","TRUE"="RED"))+labs(
  title = "Age Vs. Score",
   xlab = "Age",
-  ylab = "Score")
+  ylab = "Score")+xlim(20,75)+ylim(50,105)
 scatter_plot
 
 ```
@@ -128,7 +129,10 @@ scatter_plot
 What is the average score and standard deviation of the individuals whose ages are above the median?
 
 ```{r, warnings = FALSE, message= FALSE}
-
+csv_data %>%
+  filter(Age > median(Age, na.rm =TRUE)) %>%
+  summarise(
+    mean_Above_med =mean(Score, na.rm=TRUE), StdDev_Above_med=sd(Score, na.rm=TRUE))
 
 ```
 
@@ -138,7 +142,14 @@ Write a function which calculates and presents the average score for individuals
 
 ```{r, warnings = FALSE, message= FALSE}
 
-
+Average_Score_In_Range <- function(min_Age,max_Age){
+  mean( 
+    csv_data$Score[
+      csv_data$Age >=min_Age &
+      csv_data$Age <=max_Age],
+    na.rm =TRUE)
+}
+Average_Score_In_Range(32,62)
 ```
 
 ## Question 9 (9 points)
@@ -149,6 +160,14 @@ i.  over the age of 50
 ii. under the age of 25
 iii. between the ages of 35-45
 
+```{r, warnings = FALSE, message= FALSE}
+Average_Score_In_Range(50,Inf)
+Average_Score_In_Range(0,25)
+Average_Score_In_Range(35,45)
+
+```
+
 ## Question 10 (2 points)
 
 What are some limitations to your function? Where might it fail or give an incomplete answer?
+The function would not work if you wanted to use it for multiple ranges, i.e. average score of those aged 20-30 and 50-60. it also wouldn't work for values outside of a range, i.e. average score of those aged under 40 and over 50.

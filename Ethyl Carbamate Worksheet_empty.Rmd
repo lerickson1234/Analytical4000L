@@ -1,6 +1,6 @@
 ---
 title: 'Ethyl Carbamate Quantification in Table Wine'
-author: "Filled in version - Answers"
+author: "Layne Erickson"
 date: "`r Sys.Date()`"
 output: html_document
 ---
@@ -17,7 +17,7 @@ library(tidyverse)
 ## Importing experimental data
 
 ```{r import}
-calibration <- read.csv("Ethyl Carbamate/EC_calibration.csv")
+calibration <- read.csv("EC_calibration.csv")
 ```
 
 ## Initial plotting of our calibration curve
@@ -34,7 +34,10 @@ ggplot(calibration, aes(conc_ug_L, fluor_signal_area)) +
 
 # write some code here to plot the GC calibration curve!
 
-
+ggplot(calibration,aes(conc_ug_L,ms_signalintensity))+geom_point()+
+  geom_smooth(method = "lm")+
+  theme_bw(base_size = 16)+
+  ggtitle("GC method calibration curve - raw")
 
 
 ```
@@ -58,7 +61,12 @@ ggplot(fit_HPLC, aes(x = .fitted, y = .resid)) +
 
 
 #now do the same for the GC method!
-
+fit_GC <- lm(ms_signalintensity ~ conc_ug_L, calibration)
+ggplot(fit_GC, aes(x = .fitted, y = .resid)) +
+  geom_point(color = "blue", alpha = 0.6) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(title = "Residuals vs Fitted - GC", x = "Fitted Values", y = "Residuals") +
+  theme_bw(base_size = 16)
 
 ```
 
@@ -74,7 +82,8 @@ mod_sum_HPLC
 
 # Do it here for the GC method
 
-
+mod_sum_GC <- summary(fit_GC)
+mod_sum_GC
 
 ```
 
@@ -99,11 +108,16 @@ calibration[which(calibration$fluor_signal_area == 220.5), 'fluor_signal_area'] 
 #For the GC data, we want to look at the high value when the concentration is 10 ug/L
 #do it here!
 
+Grubbs_GC <- calibration %>%
+  filter(conc_ug_L == 10) %>%
+  summarize(mean_GC = mean(ms_signalintensity), 
+            sd_GC = sd(ms_signalintensity))
 
+G_GC <- abs(4009- Grubbs_GC$mean_GC)/Grubbs_GC$sd_GC
 
+print(paste("The calculated G value of", round(G_GC, 3), "is higher than the critical value of 1.672, and thus the data point can be removed", sep = " "))
 
-
-
+calibration[which(calibration$ms_signalintensity == 4009), 'ms_signalintensity'] <- NA
 #Let's re-check our residuals plot!
 
 # Example using HPLC method
@@ -117,12 +131,18 @@ ggplot(fit_HPLC, aes(x = .fitted, y = .resid)) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
   labs(title = "Residuals vs Fitted - HPLC", x = "Fitted Values", y = "Residuals") +
   theme_bw(base_size = 16)
+summary(fit_HPLC)
 
 
 #now do the same for the GC method!
+fit_GC <- lm(ms_signalintensity ~ conc_ug_L, calibration)
 
-
-
+ggplot(fit_GC, aes(x = .fitted, y = .resid)) +
+  geom_point(color = "blue", alpha = 0.6) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(title = "Residuals vs Fitted - GC", x = "Fitted Values", y = "Residuals") +
+  theme_bw(base_size = 16)
+summary(fit_GC)
 ```
 
 ## Checking for linearity
@@ -132,6 +152,7 @@ One of our calibration curves does not look linear. How can we modify it to impr
 ```{r linearity, fig.show="hold", out.width="50%", echo = FALSE, warning = FALSE, message=FALSE}
 
 #Let's try removing some of our high-concentration points that start deviating from the linear range
+calibration[which(calibration$conc > 40), 'ms_signalintensity'] <- NA
 ggplot(calibration %>% filter(conc_ug_L < 40), aes(conc_ug_L, ms_signalintensity)) +
   geom_point()+
   geom_smooth(method = "lm")+
@@ -149,7 +170,7 @@ ggplot(fit_GC, aes(x = .fitted, y = .resid)) +
   labs(title = "Residuals vs Fitted", x = "Fitted Values", y = "Residuals") +
   theme_bw(base_size = 16)
 
-calibration[which(calibration$conc > 40), 'ms_signalintensity'] <- NA
+
 ```
 
 ```{r final plots, echo=FALSE, fig.show="hold", out.width="50%", warning=FALSE, message=FALSE, echo = FALSE}
@@ -179,7 +200,9 @@ limits <- tibble(
 )
 
 # Here is an example of the math for the HPLC method
-
+mod_sum_HPLC <- summary(fit_HPLC)
+mod_sum_HPLC
+mod_sum_GC
 #Calculating LOD and LOQ (method 1!)
 limits[1, "HPLC"] <- round(3.3*mod_sum_HPLC$sigma/as.numeric(mod_sum_HPLC$coefficients["conc_ug_L", "Estimate"]), 3)
 
@@ -196,8 +219,16 @@ limits[4, "HPLC"] <- 10*as.numeric(sd)/as.numeric(mod_sum_HPLC$coefficients["con
 
 # Now, go do it for the GC method!
 
+limits[1, "GC"] <- round(3.3*mod_sum_GC$sigma/as.numeric(mod_sum_GC$coefficients["conc_ug_L", "Estimate"]), 3)
 
+limits[3, "GC"] <- 10*mod_sum_GC$sigma/as.numeric(mod_sum_GC$coefficients["conc_ug_L", "Estimate"])
+sd <- calibration %>%
+  filter(conc_ug_L == 5) %>%
+  select(ms_signalintensity) %>% 
+  summarize(sd = sd(ms_signalintensity, na.rm = TRUE))
 
+limits[2, "GC"] <- 3.3*as.numeric(sd)/as.numeric(mod_sum_GC$coefficients["conc_ug_L", "Estimate"])
+limits[4, "GC"] <- 10*as.numeric(sd)/as.numeric(mod_sum_GC$coefficients["conc_ug_L", "Estimate"])
 
 knitr::kable(limits, caption = "All calculated limits of detection", digits = 3,  format.args = list(drop0trailing = TRUE), format = "html", col.names = c(" ", "HPLC (\u00B5g/L)", "GC (\u00B5g/L)"))%>%
   column_spec(1:ncol(limits), extra_css = "padding-left: 30px; padding-right: 30px;")
@@ -215,7 +246,7 @@ We can use standard addition experiments to find systematic errors in our calibr
 SA <- calibration %>%
   select(SA_HPLC, spike_uL) %>%
   mutate(spike_mL = spike_uL/1000,
-         x = 1250*(spike_mL/1), 
+         x = 1400*(spike_mL/1), 
          y = SA_HPLC*(1 + spike_mL)/1)
 
 #If we were doing this properly, we would evaluate model fit in the way we did before
@@ -231,7 +262,7 @@ mod_sum_SA
 
 SA_conc = mod_sum_SA$coefficients[1,1]/mod_sum_SA$coefficients[2,1]
 calc_conc = as.numeric((calibration[1,"SA_HPLC"]- mod_sum_HPLC$coefficients[1,1])/mod_sum_HPLC$coefficients[1,2])
-
+calc_conc
 #this is handwavy, but we will discuss more rigorous comparisons later. Ultimately, you want to do a t-test.
 print(paste("The concentration determined by the standard addition is", round(SA_conc, 2), "\u00B5g/L which is similar to the concentration calculated with the calibration curve of", round(calc_conc, 2), "\u00B5g/L", sep = " "))
 ```
@@ -276,35 +307,55 @@ unknown_HPLC <- calibration %>%
 unknownA_HPLC <- mean(unknown_HPLC$HPLC_concA, na.rm = TRUE)
 unknownA_HPLC_wine <- unknownA_HPLC*3.3*1.3
 
+unknown_GC <- calibration %>%
+  mutate(GC_concA = (unknownA_GC - mod_sum_GC$coefficients[1,1])/mod_sum_GC$coefficients[2,1], 
+         GC_concB = (unknownB_GC - mod_sum_GC$coefficients[1,1])/mod_sum_GC$coefficients[2,1]) 
+
+unknownA_GC <- mean(unknown_GC$GC_concA, na.rm = TRUE)
+unknownA_GC_wine <- unknownA_GC*3.3*1.3
+
+
+
+
 print(paste("The concentration of ethyl carbamide in wine A is ", round(unknownA_HPLC, 3), " ug/L which corresponds to a concentration in the wine of", round(unknownA_HPLC_wine, 3), " ug/L"))
 
 #Now, do the calculation on your own!
 
+unknownB_HPLC <- mean(unknown_HPLC$HPLC_concB, na.rm = TRUE)
+unknownB_HPLC_wine <- unknownB_HPLC*3.3*1.3
 
-
-
+unknownB_GC <- mean(unknown_GC$GC_concB, na.rm = TRUE)
+unknownB_GC_wine <- unknownB_GC*3.3*1.3
 
 ```
 
 ### Calculating the standard deviation of the measurement
 
 ```{r HPLC uncertainty, echo = FALSE}
+#Std deviation:
 sy = mod_sum_HPLC$sigma
+
+#slope:
 m = mod_sum_HPLC$coefficients[2,1]
+# #of replicate measurements:
 k = 5
-n = 11
-y = unknownA_HPLC
+# #of calibration points:
+n = sum(!is.na(calibration$fluor_signal_area))
+# average signal of unknowns
+y = as.numeric(calibration %>%
+  select(unknownA_HPLC) %>%
+  summarize(mean = mean(unknownA_HPLC, na.rm=TRUE)))
+#average signal of calibrants:
 y_cal = as.numeric(unknown_HPLC %>%
-                   filter(conc_ug_L > 7)  %>%
-                   summarize(mean = mean(conc_ug_L, na.rm = TRUE)))
+                   summarize(mean = mean(fluor_signal_area, na.rm = TRUE)))
 us = as.numeric(unknown_HPLC %>%
                    filter(conc_ug_L > 7)  %>%
                    summarize(sd = sd(conc_ug_L, na.rm = TRUE)))
 
 
 muA_HPLC = sy/m*sqrt((1/k) +
-          (1/7) +
-           (unknownA_HPLC - y_cal)^2/(m^2*us^2*(n-1)))
+          (1/n) +
+           (y - y_cal)^2/(m^2*us^2*(n-1)))
 
 #This doesn't account for the dilution! We have to propagate our uncertainty from our calibration to the final concentration by accounting for dilution. 
 
@@ -313,10 +364,29 @@ muA_HPLC_wine <- muA_HPLC/unknownA_HPLC*unknownA_HPLC_wine
 print(paste("The ethyl carbamate concentration in our sample is ", round(unknownA_HPLC, 1) , " \u00B1 ", round(muA_HPLC, 1), " \u00B5g/L from n = ", k, ", and a concentration in Wine A of", round(unknownA_HPLC_wine, 1), " \u00B1 ", round(muA_HPLC_wine, 1), " \u00B5g/L from n = ", k, sep = " "))
 
 #now do it yourself for wine B!
+#slope:
+m = mod_sum_HPLC$coefficients[2,1]
+# #of replicate measurements:
+k = 5
+# #of calibration points:
+n = sum(!is.na(calibration$fluor_signal_area))
+# average signal of unknowns
+y = as.numeric(calibration %>%
+  select(unknownB_HPLC) %>%
+  summarize(mean = mean(unknownB_HPLC, na.rm=TRUE)))
+#average signal of calibrants:
+y_cal = as.numeric(unknown_HPLC %>%
+                   summarize(mean = mean(fluor_signal_area, na.rm = TRUE)))
+us = as.numeric(unknown_HPLC %>%
+                   filter(conc_ug_L > 7)  %>%
+                   summarize(sd = sd(conc_ug_L, na.rm = TRUE)))
 
 
-
-
+muB_HPLC = sy/m*sqrt((1/k) +
+          (1/n) +
+           (y - y_cal)^2/(m^2*us^2*(n-1)))
+muB_HPLC_wine <- muB_HPLC/unknownB_HPLC*unknownB_HPLC_wine
+print(paste("The ethyl carbamate concentration in our sample is ", round(unknownB_HPLC, 1) , " \u00B1 ", round(muB_HPLC, 1), " \u00B5g/L from n = ", k, ", and a concentration in Wine B of", round(unknownB_HPLC_wine, 1), " \u00B1 ", round(muB_HPLC_wine, 1), " \u00B5g/L from n = ", k, sep = " "))
 
 ```
 
@@ -326,10 +396,11 @@ print(paste("The ethyl carbamate concentration in our sample is ", round(unknown
 
 CI_HPLC_wineA <- muA_HPLC_wine*3.182
 
+
 print(paste("The ethyl carbamate concentration in Wine A is ", round(unknownA_HPLC_wine, 1) , " \u00B5g/L, 95% CI [", round(unknownA_HPLC_wine-CI_HPLC_wineA, 1), ",", round(unknownA_HPLC_wine+CI_HPLC_wineA, 1), "]" , sep = ""))
 
 # your turn for WineB
-
+CI_HPLC_wineB <- muB_HPLC_wine*3.182
 
 ```
 
@@ -340,12 +411,39 @@ Practice this on your own!
 ```{r GC values, echo = FALSE}
 
 
+#slope:
+mGC = mod_sum_GC$coefficients[2,1]
+# #of replicate measurements:
+kGC = 5
+# #of calibration points:
+nGC = sum(!is.na(calibration$ms_signalintensity))
+# average signal of unknowns
+yGC = as.numeric(calibration %>%
+  select(unknownB_GC) %>%
+  summarize(mean = mean(unknownB_GC, na.rm=TRUE)))
+#average signal of calibrants:
+yGC_cal = as.numeric(unknown_GC %>%
+                       summarize(mean = mean(ms_signalintensity, na.rm = TRUE)))
+usGC = as.numeric(unknown_GC %>%
+                   filter(conc_ug_L > 7)  %>%
+                   summarize(sd = sd(conc_ug_L, na.rm = TRUE)))
 
 
 
+muA_GC = sy/m*sqrt((1/k) +
+          (1/n) +
+           (y - y_cal)^2/(m^2*us^2*(n-1)))
+muA_GC_wine <- muA_GC/unknownA_GC*unknownA_GC_wine
+
+muB_GC = sy/m*sqrt((1/k) +
+          (1/n) +
+           (y - y_cal)^2/(m^2*us^2*(n-1)))
+muB_GC_wine <- muB_GC/unknownB_GC*unknownB_GC_wine
 
 
 
+CI_GC_wineA <- muA_GC_wine*3.182
+CI_GC_wineB <- muB_GC_wine*3.182
 
 
 
@@ -370,7 +468,7 @@ F_wineA = muA_HPLC_wine^2/muA_GC_wine^2
 print(paste("The calculated F value of", round(F_wineA, 2), "is lower that the F table value of 6.39, so the standard deviations are not significantly different", sep = " "))
 
 #Now do it for wine B!
-
+F_wineB = muB_HPLC_wine^2/muB_GC_wine^2
 
 ```
 
@@ -381,7 +479,7 @@ F_HPLC = muB_HPLC_wine^2/muA_HPLC_wine^2
 print(paste("The calculated F value of", round(F_HPLC, 2), "is lower that the F table value of 6.39, so the standard deviations are not significantly different", sep = " "))
 
 #you do it for the GC
-
+F_GC = muB_GC_wine^2/muA_GC_wine^2
 ```
 
 ## t-test:
@@ -395,7 +493,7 @@ t_wineA = abs(unknownA_HPLC_wine - unknownA_GC_wine)*sqrt(5*5/(5+5))/sqrt((muA_H
 print(paste("The calculated t value of", round(t_wineA, 2), "is higher that the t-table value of 2.306, so the means are significantly different", sep = " "))
 
 #Now, you do it for WineB!
-
+t_wineB = abs(unknownB_HPLC_wine - unknownB_GC_wine)*sqrt(5*5/(5+5))/sqrt((muB_HPLC_wine^2*4+ muB_GC_wine^2*4)/(8))
 
 ```
 
@@ -406,7 +504,7 @@ t_HPLC = abs(unknownA_HPLC_wine - unknownB_HPLC_wine)*sqrt(5*5/(5+5))/sqrt((muA_
 print(paste("The calculated t value of", round(t_HPLC, 2), "is higher that the t-table value of 2.306, so the means are significantly different", sep = " "))
 
 #you do it for the GC
-
+t_GC = abs(unknownA_GC_wine - unknownB_GC_wine)*sqrt(5*5/(5+5))/sqrt((muA_GC_wine^2*4+ muB_GC_wine^2*4)/(8))
 
 ```
 

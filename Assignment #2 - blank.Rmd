@@ -30,8 +30,6 @@ You are interested in quantifying the amount of **formic acid** in indoor air. T
 
 A graphic of the tube is included below:
 
-![KOH sampler](Solid%20KOH.png)
-
 Samplers were deployed for 4 hours before extraction into 5 mL of milliQ water. Each sample was measured via IC-CD and the peak areas of all the extracts is included in "Assignment2.csv"
 
 ### Question 1: Describe how each sampler type is deployed and the purpose of each sampler type. (16 points)
@@ -88,7 +86,7 @@ ggplot(Exp_Data, aes(`Std.Conc_ug_L`,Formate.peak.area))+
   ggtitle("Test.Formate")
 ```
 
-```{r quality control, warning = FALSE, message = FALSE}
+```{r quality, warning = FALSE, message = FALSE}
 #Immediately there is a quite significant outlier at 1200 so a grubs test must be performed
 Grubbs_Formate <- Exp_Data %>%
   filter(`Std.Conc_ug_L` == 1200) %>%
@@ -97,7 +95,8 @@ Grubbs_Formate <- Exp_Data %>%
 
 G_Formate <- abs(1.852- Grubbs_Formate$mean_Formate)/Grubbs_Formate$sd_Formate
 
-# The Grubbs test critical value for n=4 is 1.46, and the G value of that point is 1.499 so it is borderline, but can be removed5
+# The Grubbs test critical value for n=4 is 1.46, and the G value of that point is 1.499 
+#so it is borderline, but can be removed
 Exp_Data[which(Exp_Data$Formate.peak.area == 1.8520), 'Formate.peak.area'] <- NA
 
 ggplot(Exp_Data, aes(`Std.Conc_ug_L`,Formate.peak.area))+
@@ -142,8 +141,8 @@ colnames(limits)
 #Method 2: 
 sd <- Exp_Data %>%
   filter(Std.Conc_ug_L == 10) %>%
-  select(Formate.peak.area) %>% 
-  summarize(sd = sd(Formate.peak.area, na.rm = TRUE))
+  select(unknown_peakarea) %>% 
+  summarize(sd = sd(unknown_peakarea, na.rm = TRUE))
 
 limits[2, "Formate"] <- 3.3*as.numeric(sd)/as.numeric(mod_sum_Formate$coefficients["Std.Conc_ug_L", "Estimate"])
 limits[4, "Formate"] <- 10*as.numeric(sd)/as.numeric(mod_sum_Formate$coefficients["Std.Conc_ug_L", "Estimate"])
@@ -153,9 +152,9 @@ limits[4, "Formate"] <- 10*as.numeric(sd)/as.numeric(mod_sum_Formate$coefficient
 | Method | Limit of Detection | Limit of Quantification |
 |:------:|:------------------:|:-----------------------:|
 |   1    |        57.1        |          173.1          |
-|   2    |        2.14        |           6.5           |
+|   2    |        3.63       |           11           |
 
-I think the second method is likely to be more accurate as 57.1ug/L as the limit of detection is higher than the the lowest values of 10ug/L and 50ug/L which have significantly different signals suggesting that the machine can definitely both detect and quantify signals at those values
+I think the second method is likely to be more accurate as 57.1ug/L as the limit of detection is higher than the the lowest values of 10ug/L and 50ug/L which have significantly different signals suggesting that the machine can quantify signals at some point between those values, however the 10ug/L standards have about the same detection as the control and blank experiments, suggesting that 10ug/L is below the loq and lod. Neither one is accurate.
 
 ### Question 6: Unknown concentrations (25 points)
 
@@ -168,8 +167,6 @@ I think the second method is likely to be more accurate as 57.1ug/L as the limit
 #n= number of calibration standards
 #y0 = measured response of the unknown
 #ybar = mean response of calibration standards
-plot(Exp_Data$Std.Conc_ug_L,
-     Exp_Data$Formate.peak.area)
 Cali.Curve <-lm(Formate.peak.area~Std.Conc_ug_L, data=Exp_Data)
 coef(Cali.Curve)
 summary(Cali.Curve)$r.squared
@@ -205,9 +202,9 @@ control_uncert <- conc_uncertainty(Cali.Curve,control_mean)
 blank_uncert <- conc_uncertainty(Cali.Curve,blank_mean)
 zero_uncert <- conc_uncertainty(Cali.Curve,zero_mean)
 experiment_uncert<- conc_uncertainty(Cali.Curve,experiment_mean)
-
-#The issue with the function is that in this particular instance, the standard deviation of whole calibration curve is quite large, so using this equation the uncertainty ends up being about as large as the expected concentrations of the control, blank and zero unknowns
 ```
+The issue with the function is that in this particular instance, the standard deviation of whole calibration curve is quite large,  so using this equation the uncertainty ends up being about as large as the expected concentrations of the control, blank and zero unknowns
+
 
 #### 6b. Report the concentration of formate for each experiment type with its uncertainty. (10 points)
 
@@ -245,6 +242,13 @@ control_mass <- control_conc*0.005/0.98
 blank_mass <-blank_conc*0.005/0.98
 zero_mass <- zero_conc*0.005/0.98
 experiment_mass <-experiment_conc*0.005/0.98
+experiment_mass_uncert <-experiment_uncert*0.005/0.98
+control_mass_uncert <- control_uncert*0.005/0.98
+blank_mass_uncert <-blank_uncert*0.005/0.98
+zero_mass_uncert <- zero_uncert*0.005/0.98
+
+
+
 
 cat("The mass of formate in the control is",control_conc,"±",control_uncert,"ug/L")
 cat("The mass of formate in the blank is",blank_conc,"±",blank_uncert,"ug/L")
@@ -271,11 +275,15 @@ AirConc_control <-((control_mass*5)/(0.153*0.1963*14400))
 AirConc_blank <-((blank_mass*5)/(0.153*0.1963*14400))
 AirConc_zero <-((zero_mass*5)/(0.153*0.1963*14400))
 AirConc_experiment <-((experiment_mass*5)/(0.153*0.1963*14400))
+AirConc_control_Uncert <-((control_mass_uncert*5)/(0.153*0.1963*14400))
+AirConc_blank_uncert <-((blank_mass_uncert*5)/(0.153*0.1963*14400))
+AirConc_zero_uncert <-((zero_mass_uncert*5)/(0.153*0.1963*14400))
+AirConc_experiment_uncert <-((experiment_mass_uncert*5)/(0.153*0.1963*14400))
 
-cat("The concentration of formic acid in the air from the control sampler is", signif(AirConc_control, digits=3), "ug/cm^3.")
-cat("The concentration of formic acid in the air from the blank sampler is", signif(AirConc_blank, digits=3), "ug/cm^3.")
-cat("The concentration of formic acid in the air from the zero sampler is", signif(AirConc_zero, digits=3), "ug/cm^3.")
-cat("The concentration of formic acid in the air from the experiment sampler is", signif(AirConc_experiment, digits=3), "ug/cm^3")
+cat("The concentration of formic acid in the air from the control sampler is",signif(AirConc_control, digits=2),"±", signif(AirConc_control_Uncert,digits=1),"ug/cm^3")
+cat("The concentration of formic acid in the air from the blank sampler is", signif(AirConc_blank, digits=2),"±",signif(AirConc_blank_uncert,digits=1), "ug/cm^3.")
+cat("The concentration of formic acid in the air from the zero sampler is", signif(AirConc_zero, digits=2),"±",signif(AirConc_zero_uncert,digits=1), "ug/cm^3.")
+cat("The concentration of formic acid in the air from the experiment sampler is", signif(AirConc_experiment, digits=2),"±",signif(AirConc_experiment_uncert,digits=1), "ug/cm^3")
 ```
 
 ### Question 8: Report the final concentration of formic acid in air in mg/m\$\^3\$, with uncertainty. (15 points)
@@ -287,9 +295,9 @@ cat("The concentration of formic acid in the air from the experiment sampler is"
 #cm^3 -> m^3 *0.000001
 #converting Experiment and control to mg/m^3:
 
-Experiment <- 0.0464*0.001/0.000001
-Control<-0.00083*0.001/0.000001
-
+Experiment <- 0.0464*0.001/1e-6
+Control<-0.00083*0.001/1e-6
+test<-0.001/1e-6
 
 #converting uncertainty to mg/m^3 from ug/L
 experiment_AirConc_uncert<-((experiment_uncert*0.005*5)/(0.153*0.1963*14400))
@@ -307,7 +315,8 @@ cat("The final concentration of formic acid in the air is", signif(Experiment - 
 ### Question 9: Occupational exposure limits for formic acid generally restrict airborne concentrations to 9 mg/m$^3$ averaged over an 8-hour workday. (5 points)
 
 ### 9a. How does sampling time play a role in this determination? (3 points)
-We sampled for only 4 hours, so we could expect the exposure over an 8 hour day to be twice as much as the sampled concentration.
+
+We sampled for only 4 hours, so we could expect the exposure over an 8 hour day to be twice as much as the sampled concentration, so about 91.2 mg/m^3 over 8 hours.
 
 ### 9b. Based on these results, do you think it would be safe to spend an 8-hour workday in that space? (2 points)
-With the highest uncertainty, assuming twice as long has twice the exposure, the exposure would be over the limits and even without assuming the highest uncertainty it would be borderline at best and there it would be unsafe conditions.
+It is absolutely no safe to spend an 8 hour work day there as the exposure is about 10 times as much as safe. 

@@ -1,6 +1,6 @@
 ---
 title: 'Assignment #3: Ambient Air Quality Data '
-author: "(insert name here)"
+author: "Layne Erickson"
 date: "`r Sys.Date()`"
 output:
   pdf_document: default
@@ -130,7 +130,7 @@ ggplot(A3Annual,
         ymax = mean + sd),
     width = 0.2,
     position= position_dodge(0.5)) +
-  labs(x= "Year", y="Mean (ppm)")+
+  labs(  x= "Year", y="Mean (ppm)")+
   theme_bw()
 ```
 
@@ -188,7 +188,7 @@ ggplot(O3MDA8Excess, aes(x = year, y = exceedances)) +
 ```
 
 ### Question 8: from the plots above, how have the pollution levels evolved over time in Lethbridge? (6 points)
-
+#The Pollution levels have stayed relatively constant through the last 16 years, and the MDA8 exceedances do not seem to have any particular trend, rising and falling from year to year. 
 
 ## Section 3: Nitrogen oxide chemistry (35 points)
 
@@ -205,7 +205,7 @@ measurementsNox <- A3NOX %>%
     values_to = "Measurement"
   ) %>%
   mutate(
-    Pollutant = sub("Measurement//.Value", "", Pollutant)
+    Pollutant = sub("Measurement.Value", "", Pollutant)
   )
 
 flagsNox <- A3NOX %>%
@@ -234,31 +234,41 @@ A3NOXLong <- A3NOXLong%>%
     sd = sd(Measurement, na.rm = TRUE),
     .groups = "drop"
   )
-
-ggplot(A3NOXLong,
-       aes(x = year,
-           y = mean,
-           colour = Pollutant,
-           group = Pollutant)) +
-  geom_point(position = position_dodge(0.5), size = 3) +
-  geom_line() +
-  geom_errorbar(
-    aes(ymin = mean - sd,
-        ymax = mean + sd),
-    width = 0.2,
-    position= position_dodge(0.5)) +
-  labs(x= "Year", y="Mean (ppm)")+
-  theme_bw()
-
+A3NOXLong
 ```
 
 ### Question 10: Choose a complete year of data. Generate a diurnal plot for nitric oxide and nitrogen dioxide for that year, along with their standard deviations.(15 points)
 
 ```{r Q10, echo = TRUE, warning= FALSE, message= FALSE}
-
-
+Data2017 <- A3Data %>%
+  mutate(year = format(as.POSIXct(date), "%Y")) %>%
+  filter(year == 2017) 
+Data2017 <- Data2017 %>%
+  select(date, starts_with("Measurement.Value")) %>%
+  pivot_longer(
+    -date,
+    names_to = "Pollutant",
+    values_to = "Measurement"
+  )
+Data2017 <- Data2017 %>%
+  mutate(
+    Pollutant = sub("Measurement.Value", "", Pollutant))
+  
+Data2017 <- Data2017 %>%
+  mutate(Hour = format(as.POSIXct(date), "%H")) %>%
+  group_by(Hour, Pollutant) %>%
+  summarize(mean = mean(Measurement, na.rm = TRUE),sd = sd(Measurement, na.rm=TRUE))
+Data2017<- Data2017%>%
+  filter(Pollutant=="NO"|Pollutant=="NO2")
+ggplot(Data2017, aes(x=Hour, y= mean, colour = Pollutant, group = Pollutant))+
+  geom_point(position = position_dodge(0.2))+
+  geom_line()+
+  geom_errorbar(aes(ymin = mean - sd,
+        ymax = mean + sd), width=0.2,position = position_dodge(0.2))+labs(x="Hour",y="Mean(PPM)")+
+  theme_bw()
+  
 ```
 
 ### Question 11: Hypothesize as to why there is a spike in all three pollutants at a specific time of day.(5 points)
-
+#At 6-7am, there is a significant peak which coincides with 2 major factors: Sunrise and people starting their days/ their cars. Cars emit lots of NOx and sunrise starts photolysis of atmospheric pollutants
 

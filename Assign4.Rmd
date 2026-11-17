@@ -196,13 +196,12 @@ Acetone has a singlet peak at \~2.08 in D2O solvent H NMR^(1)^\
 #Acetone peak = 2.08
 
 
-to_remove <- (spec$freq > 4.66 & spec$freq < 4.95) |
+to_remove <- (spec$freq > 4.65 & spec$freq < 4.95) |
              (spec$freq > 1.93 & spec$freq < 2.23)
 NewSpec <- removeFreq(
   spec,
   rem.freq = to_remove
 )
-is.logical(to_remove)
 
 ```
 
@@ -212,10 +211,11 @@ Because if some samples are contaminated and others are not, there will be very 
 #### Question 7: each sample contains 0.05% of 3-(trimethylsilyl) propionic-2,2,3,3,-d4 acid sodium salt (TSP) as an internal standard. Its primary reference peak is found at 0.00 ppm. Normalize all the spectra to that internal standard using the normSpectra function, with the PQN method. Then, remove the internal standard peak before we calculate the PCA. (8 points)
 
 ```{r}
+range <- NewSpec$freq > -0.5 & NewSpec$freq < 0.5
 NormSpec <- normSpectra(
-  spec,
+  NewSpec,
   method = "PQN",
-  RangeExpress = "0.05 > ppm > -0.05"
+  RangeExpress = range
 )
 NormSpec <- removeFreq(
   NormSpec,
@@ -229,7 +229,7 @@ NormSpec <- removeFreq(
 RawPure <- plotSpectra(
   spec,
   which = c(25),
-  yrange = c(0,800),
+  yrange = c(0,1000),
   offset = 0,
   amplify = 1,
   lab.pos = mean(spec$freq),
@@ -240,7 +240,7 @@ RawPure <- plotSpectra(
 CleanPure<- plotSpectra(
   NewSpec,
   which = c(25),
-  yrange = c(0,800),
+  yrange = c(0,120),
   offset = 0,
   amplify = 1,
   lab.pos = mean(NewSpec$freq),
@@ -250,7 +250,7 @@ CleanPure<- plotSpectra(
 NormPure <- plotSpectra(
   NormSpec,
   which = c(25),
-  yrange = c(0,800),
+  yrange = c(0,0.010),
   offset = 0,
   amplify = 1,
   lab.pos = mean(NormSpec$freq),
@@ -258,14 +258,19 @@ NormPure <- plotSpectra(
   leg.loc = "none"
 )
 
-combined_plot <- plot_grid(RawPure,
+title <- ggdraw() +
+  draw_label(
+    "Raw, Purified, and Normalized Plots of Pure Sample3",
+    fontface = "bold",
+    size = 16
+  )
+combined_plot <- plot_grid(title,
+                           RawPure,
                            CleanPure,
                            NormPure,
                            ncol =1,
                            align ="v",
                            axis ="lr")
-
-
 
 
 
@@ -278,17 +283,32 @@ combined_plot
 #### Question 9: Create the PCA. Plot PC1 vs PC2. (10 points)
 
 ```{r}
+pca <- c_pcaSpectra(NormSpec, choice = "noscale", cent = TRUE)
 
+pcaPlot <- plotScores(spec,
+                      pca, 
+                    
+                      pcs = c(1,2), 
+                      
+                      ellipse = "rob",
+                      
+                      use.sym = FALSE,
+                     
+                      tol = 0.01)
+
+pcaPlot <- pcaPlot + ggtitle("NMR PCA Plot")
+
+pcaPlot
 ```
 
 #### Question 10a: What is the total variance represented by PC1 and PC2? (2 points)
 
 ```{r}
-
+79% of the variance is represented by PC1 and PC2
 ```
 
 #### Question 10b: How many PC would be need to visualize to capture 75% of the total variance? (7 points)
-
+2?
 ## Section 4: Discussion and final conclusions
 
 #### Question 11: PC1 (and other PCs) categorize the honeys into three separate groups. Plot a 3D plot to visualize the first three PCs and define the three groups by their PC values using the following terms:
@@ -308,7 +328,21 @@ combined_plot
 You can decide which group is numbered what, but be consistent below! (15 points)
 
 ```{r}
+pca_df <- as.data.frame(pca$x[, 1:3])
+pca_df$groups <- NormSpec$groups
 
+
+plot_ly(
+  data = pca_df,
+  x = ~PC1,
+  y = ~PC2,
+  z = ~PC3,
+  color = ~groups,
+  colors = c("#1B9E77", "#D95F02", "#7570B3"),
+  type = "scatter3d",
+  mode = "markers",
+  marker = list(size = 5, opacity = 0.8)
+)
 ```
 
 | Group       | PC1 | PC2 | PC3 |
@@ -318,3 +352,4 @@ You can decide which group is numbered what, but be consistent below! (15 points
 | Manuka      |     |     |     |
 
 #### Question 12: Based on the analysis we've done so far, suggest which type of honey would best describe BeesKnees, and why. (10 points)
+BeesKnees is in the cluster of pure Honey samples at x=-0.0053, y= 0.00372, z= 0.0011

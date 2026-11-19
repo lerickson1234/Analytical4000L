@@ -1,0 +1,397 @@
+---
+title: "Mass Spectrometry Workbook"
+author: "(your name here)"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = ("C:/Users/l.erickson/OneDrive - University of Lethbridge/StephChem4000/Analytical4000L"))
+
+library(ggplot2)
+library(tidyverse)
+library(cowplot)
+library(plotly)
+
+#Section 1 
+library(BiocManager)
+#BiocManager::install("Cardinal")
+library(Cardinal)
+
+#Section 4
+#install.packages("gcxgclab")
+library(gcxgclab)
+
+#Section 5
+
+```
+
+# Mass Spectrometry Worksheet
+This sheet includes everything we will get to until the end of the semester! We will cover a variety of techniques, and different analysis approaches that are used for each technique. 
+
+## Section 1: MALDI-ToF-MS
+We are going to use data from the Cardinal package to explore the different functionality. 
+
+Our first step is generating the example dataset. Run the entire chunk below.   
+```{r imaging set up}
+#This sets a specific seed (random number generator)
+set.seed(2020, kind="L'Ecuyer-CMRG")
+
+# This simulates the image using the specific preset, which constrains the image 
+# within parameters
+mse <- simulateImage(preset=6, dim=c(32,32), baseline=0.5)
+mse
+
+```
+```{r mass spectra}
+
+#Need the mass spec data to be stored as variables instead of as metadata
+msa <- convertMSImagingExperiment2Arrays(mse)
+msa
+
+plot(msa, i=c(496))
+```
+
+```{r image}
+
+image(mse, i=1938)
+
+image(mse, i=250)
+```
+```{r PCA}
+#Let's run a PCA of the circular part of our image
+limited <- subsetPixels(mse, circleA == TRUE | circleB == TRUE)
+
+pca <- PCA(limited, ncomp=3)
+
+image(pca, type="x", superpose=FALSE, layout=c(1,3), scale=TRUE)
+
+limited$design <- makeFactor(circleA=(limited$circleA & limited$run == "runA1"), 
+                         circleB=(limited$circleB & limited$run == "runB1"))
+
+plot(pca , type="x", groups= limited$design, linewidth=2)
+
+plot(pca, type="rotation", superpose=FALSE, layout=c(1,3), linewidth=2)
+```
+
+## Section 2: PTR
+We are going to use data that I (Steph) collected with the PTR. The specific experiment I did to collect the data involved passing ozone over the surface of Arctic Ocean water, and looking at the emissions.
+
+Our first step is importing the dataset. Run the chunk below:
+```{r import section2}
+
+PTR <- read_csv("OzoneArctic.csv") %>%
+  select(!`...1`)
+
+
+
+```
+```{r experiment exploration}
+PTR_total <- PTR %>%
+  group_by(time) %>%
+  summarize(intensity = sum(intensity))
+
+ggplot(data = PTR_total, aes(x = time, y = intensity))+ 
+  geom_point()+
+  theme_bw()+
+  xlab("time (seconds)")+
+  ylab("total ion intensity")+
+  ggtitle("Oxidation Experiment")
+
+```
+
+```{r matching m/z}
+#Importing PeakList which has masses and molecular formulas
+PeakList <- read_csv("PeakList.csv") %>%
+  select(ion, x0) %>%
+  dplyr::rename(mass = x0)
+
+PTR <- merge(PTR, PeakList, by = c('mass'), all.x = TRUE)
+
+ggplot(data = PTR %>% filter(ion == "C7H15O+"), aes(x = time, y = intensity))+ 
+  geom_point()+
+  theme_bw()+
+  xlab("time (seconds)")+
+  ylab("Heptanal ion intensity")+
+  ggtitle("Heptanal Signal")
+
+```
+
+```{r PTR library}
+library <- read_csv("PTR library.csv", skip = 2)
+
+# Let's see what heptanal fragments into!
+heptanal <- library %>%
+  filter(`Compound Name` == "heptanal")
+
+Frag <- library %>%
+  filter(`m/z A` == "97.101")
+
+
+#Need to round to the same decimal place
+PTR <- PTR %>%
+  mutate(mass = round(mass, 3))
+
+#What about the second ion fragment?
+ggplot(data = PTR %>%
+         filter(mass == 115.112 | mass == 97.101),
+       aes(x = time, y = intensity, colour = as.character(mass)))+ 
+  geom_point()+
+  theme_bw()+
+  xlab("time (seconds)")+
+  ylab("Heptanal ion intensity")+
+  ggtitle("Heptanal Signal")+ 
+  labs(color = "Ion m/z")
+```
+
+```{r interfering}
+
+interferents <- library %>%
+  filter(`m/z A` == 115.112 |  `m/z A` == 97.101 |
+         `m/z B` == 115.112 |  `m/z B` == 97.101 |
+         `m/z C` == 115.112 |  `m/z C` == 97.101)
+
+ggplot(data = PTR %>%
+         filter(mass == 99.117 ),
+       aes(x = time, y = intensity))+ 
+  geom_point()+
+  theme_bw() +
+  xlab("time (seconds)")+
+  ylab("99.117 ion intensity")+
+  ggtitle("Possible interferent")
+
+```
+
+```{r increasing}
+PTR_type <- PTR %>%
+  mutate(type = case_when(time < 1000 ~ "background", 
+                          time > 1000 & time <2000 ~ "ozone", 
+                          time > 200 ~ NA)) %>%
+  filter(!is.na(type)) %>%
+  group_by(ion, type) %>%
+  summarize(sd = sd(intensity, na.rm = TRUE), 
+            intensity = mean(intensity, na.rm = TRUE))
+
+PTR_type <- PTR_type %>%
+  pivot_wider(names_from = type, values_from = c(intensity, sd))
+
+PTR_type <- PTR_type %>%
+  mutate(LOQ = 10*sd_background+intensity_background, 
+         increase = ifelse(LOQ < intensity_ozone, TRUE, FALSE)) %>%
+  filter(increase == TRUE)
+
+```
+
+## Section 3: GCxGC MS
+We are going to use example data from the package!
+
+```{r gcxgc data}
+
+file <- system.file("extdata","sample1.cdf",package="gcxgclab")
+
+frame <- extract_data(file,mod_t=.5)
+
+```
+
+```{r gcxgc TIC plot}
+plot_chr(frame, title='Raw Data', scale="linear")
+
+plot_chr(frame, title='Log Intensity')
+
+```
+```{r gcxgc chromatograms}
+#Find the 5 highest peaks
+peaks <- top_peaks(frame$TIC_df, 1)
+
+mz <- find_ms(frame, t_peak=peaks$'T'[1])
+
+#Plot the chromatogram with the highest intensity
+plot_ms(mz)
+
+#Circle the highest peak in the 2D plot
+plot_peak(peaks, frame, title="Top Peak") 
+
+```
+
+```{r gcxgc interfering}
+#This is the second highest peak!
+eic <- find_eic(frame, MOI=92.1397,tolerance=0.005)
+
+#See the separation between all the different molecules that form an ion at that m/z
+plot_eic(eic,dim=2,title='EIC for MOI 92.1397')+
+  xlim(0,12)
+
+```
+```{r Kendrick}
+
+mz <- find_ms(frame, t_peak=peaks$'T'[1])
+
+plot_defect(mz,title="Kendrick Mass Defect, CH_2")
+
+plot_defect(mz,title="Kendrick Mass Defect, CH_2")+
+  xlim(62.5,68)+
+  ylim(-0.1,0.07)+
+  geom_point(size = 2)
+```
+
+## Section 4: Target Screening
+
+```{r install rawrr}
+#BiocManager::install("rawrr")
+#rawrr::installRawFileReaderDLLs() 
+#rawrr::installRawrrExe()
+library(rawrr)
+
+source("ScreeningFunctions.R") 
+```
+
+
+```{r isotopes}
+#This imports a list from the rawrr package that has the specific isotopic mass for all stable isotopes. This is not disimilar to what we saw at the beginning of the year!
+data(isotopes)
+
+#We have to start by identifying a single, or many molecular formulas. You can specify the molecule or the ion; however what you specify dictates your workflow.
+#Rules: never specify charge, never duplicate atoms, and always include a number (even if 1!)
+
+#ion
+chemforms <-c("H4O4P1")
+
+#molecule
+chemforms_m<-c("H3O4P1")
+
+#This function will check to see if the molecular formula was written out - this is optional
+checked_chemforms <-	check_chemform(isotopes, chemforms)
+
+#If you've chosen to use the neutral molecular, here is how you protonate it to look for the ion. 		 
+chemforms<-mergeform(chemforms_m,"H1")
+
+#Next, you calculate all possible iterations of isotope mixtures and predict their abundance.If you have an ion, you have to specify the gain/loss of an electron in the mass!
+patterns <- isopattern(isotopes,
+                       chemforms,
+                       threshold = 0.001,
+                       charge = 1,
+                       emass = 0.00054857990924)
+
+#These are all lists because you can do it for a whole ton of ions at the same time, not just one like we're doing here. 
+
+#Extract the right fragment from our list
+frag <- as_tibble(patterns[["H4O4P1"]])
+
+```
+
+```{r .raw import}
+#You need to list all your files in your directory
+msfile <- list.files()
+
+#Specify the number in the list that is our file!
+xfile<-msfile[which(msfile == "Sample Data.raw")] 
+
+#Then we scan our file!
+scantable<-readIndex(xfile) %>%
+  as_tibble() 
+```
+
+```{r elution times}
+#Isolate the isotope with the highest abundance - the monoisotopic mass
+frag_mz <- as.numeric(frag %>%
+  filter(abundance >= 100) %>%
+  select(`m/z`))
+
+#We are only confident to 4 decimals
+frag_mz <- round(frag_mz, 4)
+
+frag_Chrom<-readChromatogram(xfile,
+                             mass=c(frag_mz),
+                             tol=20,
+                             type="xic",
+                             filter="ms2") 
+
+plot(frag_Chrom[[1]], diagnostic=TRUE)
+
+
+```
+Next, you need to tell the code which fragment ion peaks to collect for suspect screening. The easiest way to do this is by collecting all peaks above a given intensity. Try entering an intensity value for *minIntensity_frag* below and running the code block. This will add a red line to the chromatogram below showing where your cutoff is, and will print the number of fragment peaks (MS2 scans) that will be collected. You may need to adjust the value and rerun this block multiple times before you find an appropriate value (between 3 and 10).
+```{r identifying ion peaks}
+#Adjust this value and see how that changes the number of fragment peaks included in your search. 
+minIntensity_frag <- 3.3e5
+
+{plot(frag_Chrom[[1]], diagnostic=TRUE)
+abline(h=minIntensity_frag, col="red")} 
+
+#Obtains the index numbers for MS2 scans which contain the fragment ion above the intensity cutoff. 
+scansList_frag <-scanMatch(chromatogram=frag_Chrom,
+                          intensityCutoff=minIntensity_frag,
+                          scanIndex=scantable,
+                          MSlevel="Ms2") 
+
+```
+Once you've settled on your cutoff, this code will collect all the MS1 signals which might theoretically be precursors of the common fragment ion, based on appropriate DIA m/z window ranges and the total ion intensity of the fragment signals.
+```{r precursor ions}
+#This automatically finds the MS1 scan nearest to the MS2 scan, and extracts MS1 ions higher than the intensity of the fragment ions. This is in our R script 'ScreeningFunctions.R'
+#What assumptions are made here?
+precursors<-precursorFind(rawdata = xfile,
+                          chromatogram = frag_Chrom[[1]],
+                          MS2_scanIDs = scansList_frag,
+                          scantable = scantable)
+
+#This may take up to 1 second per MS2 scan
+View(precursors)
+```
+
+Finally, you will need to perform visual retention time matching. For each line in the precursor table generated by the code above, specify the row of the precursor file we want to investigate (i). Then run the code to generate two chromatograms, one for the fragment ion and one for the precursor ion. The red dot on each chromatograph specifies the rentention time match we comparing. If the match is poor, there is no clear signal, or there is too much background noise, delete that row and move on to the next one. 
+```{r visual check}
+i = 69
+frag_RT <- precursors[i,"frag_RTmins"]
+prec_mz <- as.numeric(precursors[i,"prec_mz"])
+frag_i <- as.numeric(precursors[i,"frag_IC"])
+prec_i <- as.numeric(precursors[i,"prec_IC"])
+
+#FRAGMENT ION CHROMATOGRAM
+frag_Chrom<-readChromatogram(xfile,
+                             mass=c(frag_mz),
+                             tol=20,
+                             type="xic",
+                             filter="ms2") 
+
+{plot(frag_Chrom[[1]], diagnostic=TRUE)
+points(frag_RT, frag_i, col = "red", pch = 19)}
+
+#PRECURSOR ION CHROMATOGRAM
+prec_Chrom<-readChromatogram(xfile,
+                             mass=c(prec_mz),
+                             tol=20, type="xic",
+                             filter="ms") 
+
+
+{plot(prec_Chrom[[1]], diagnostic=TRUE)
+points(frag_RT, prec_i, col = "red", pch = 19)}
+```
+
+```{r mass spectrum}
+scan_frag <- as.numeric(precursors[i,"frag_scanID"])
+
+spec <- readSpectrum(xfile, scan = scan_frag)
+#Need to extract the first (and only) scan
+scan <- spec[[1]]
+
+#Look only at a mass range lower than our parent/precursor ion
+scan$massRange <- c(90, 400)
+
+{plot(scan, ylim = c(0, 1))}
+
+
+```
+
+```{r bottom up}
+
+chemforms <-c("P1C12O6H28", "P1C6O5H16")
+checked_chemforms <-	check_chemform(isotopes, chemforms)
+
+frag2 <- as.numeric(checked_chemforms$monoisotopic_mass[1])
+frag3 <- as.numeric(checked_chemforms$monoisotopic_mass[2])
+
+{plot(scan, ylim = c(0, 0.02))
+  points(frag2, 0.015, col = "red", pch = 19)
+  points(frag3, 0.015, col = "red", pch = 19)}
+```
